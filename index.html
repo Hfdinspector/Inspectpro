@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>InspectPro Field</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--red:#C8102E;--red-dark:#8B0C1F;--red-light:#FF3355;--gold:#F5A623;--green:#22C55E;--blue:#3B9EFF;--bg:#0A0C10;--surface:#12161E;--surface2:#1A1F2B;--border:#252D3D;--border2:#334155;--text:#ECF0F8;--text-dim:#7A8799;--text-muted:#3D4A5C;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;overflow:hidden;}
+
+/* LOGIN */
+#loginScreen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;padding:30px;}
+.badge{width:72px;height:72px;background:var(--red);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:white;margin-bottom:16px;box-shadow:0 0 40px rgba(200,16,46,0.5);}
+.app-title{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;letter-spacing:4px;margin-bottom:4px;}
+.app-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px;}
+.mode-tag{background:rgba(200,16,46,0.15);border:1px solid var(--red-dark);color:var(--red-light);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;padding:4px 12px;border-radius:20px;margin-bottom:32px;}
+
+/* FIX: PIN input for Android/Edge - use tel type, larger touch target */
+.pin-display{display:flex;gap:12px;justify-content:center;margin-bottom:16px;}
+.pin-dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--border2);background:transparent;transition:all 0.15s;}
+.pin-dot.filled{background:var(--red);border-color:var(--red);}
+.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:280px;margin-bottom:16px;}
+.pin-key{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 10px;color:var(--text);font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;cursor:pointer;text-align:center;-webkit-tap-highlight-color:transparent;user-select:none;}
+.pin-key:active{background:var(--surface2);border-color:var(--red);}
+.pin-key.wide{grid-column:span 2;}
+.pin-key.del{font-size:18px;}
+.login-btn{width:100%;max-width:280px;background:var(--red);border:none;border-radius:10px;padding:14px;color:white;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;letter-spacing:3px;cursor:pointer;}
+.pin-err{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--red-light);margin-top:8px;min-height:16px;}
+
+.screen{display:none;flex-direction:column;height:100%;}
+.screen.active{display:flex;}
+.field-header{background:var(--surface);border-bottom:2px solid var(--red);padding:10px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.hfd-tag{background:var(--red);color:white;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:1px;padding:2px 8px;border-radius:3px;}
+.field-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;letter-spacing:2px;flex:1;}
+.field-mode{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--red-light);letter-spacing:1px;}
+.scroll-content{flex:1;overflow-y:auto;padding:12px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:10px;}
+.lbl{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase;}
+.inp{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;color:var(--text);font-family:'Barlow',sans-serif;font-size:15px;outline:none;margin-bottom:6px;}
+.inp:focus{border-color:var(--red);}
+.row{display:flex;gap:8px;}
+.btn{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text-dim);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;text-align:center;}
+.btn.red{background:var(--red);border-color:var(--red);color:white;}
+.btn.green{background:rgba(34,197,94,0.15);border-color:var(--green);color:var(--green);}
+.btn.gold{background:rgba(245,166,35,0.1);border-color:var(--gold);color:var(--gold);}
+.occ-wrap{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.occ-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;padding:7px 14px;cursor:pointer;}
+.occ-btn.active{background:var(--red);border-color:var(--red);color:white;}
+.prior-card{background:rgba(200,16,46,0.06);border:1px solid rgba(200,16,46,0.3);border-radius:10px;padding:14px;margin-bottom:10px;}
+.prior-title{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:var(--red-light);letter-spacing:2px;margin-bottom:10px;}
+.prior-item{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(200,16,46,0.15);}
+.prior-item:last-child{border-bottom:none;}
+.voice-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:10px;text-align:center;}
+.voice-ring{width:80px;height:80px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:32px;cursor:pointer;border:none;transition:all 0.2s;}
+.voice-ring.on{animation:vp 1.5s infinite;background:var(--red-light);}
+@keyframes vp{0%{box-shadow:0 0 0 0 rgba(200,16,46,0.6)}70%{box-shadow:0 0 0 25px rgba(200,16,46,0)}100%{box-shadow:0 0 0 0 rgba(200,16,46,0)}}
+.vstatus{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);letter-spacing:1px;margin-bottom:8px;}
+.waveform{display:flex;align-items:center;justify-content:center;gap:3px;height:20px;margin:6px 0;}
+.wb{width:3px;background:var(--red);border-radius:2px;}
+.wb:nth-child(1){animation:wv 0.7s ease-in-out infinite 0s}
+.wb:nth-child(2){animation:wv 0.7s ease-in-out infinite 0.1s}
+.wb:nth-child(3){animation:wv 0.7s ease-in-out infinite 0.2s}
+.wb:nth-child(4){animation:wv 0.7s ease-in-out infinite 0.3s}
+.wb:nth-child(5){animation:wv 0.7s ease-in-out infinite 0.4s}
+@keyframes wv{0%,100%{height:3px}50%{height:18px}}
+.transcript{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold);min-height:36px;text-align:left;margin-top:8px;}
+.tap-row{display:flex;gap:8px;margin-top:10px;}
+.entry-row{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:6px;display:flex;gap:10px;align-items:flex-start;}
+.entry-row.comply{border-left:3px solid var(--green);}
+.entry-row.violation{border-left:3px solid var(--red);}
+.entry-row.permit{border-left:3px solid var(--gold);}
+.entry-body{flex:1;}
+.entry-cat{font-size:13px;font-weight:600;}
+.entry-code{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);margin-top:2px;}
+.entry-note{font-size:11px;color:var(--text-dim);margin-top:2px;}
+.entry-del{background:none;border:none;color:var(--text-muted);font-size:16px;cursor:pointer;padding:4px;}
+.cl-section{margin-bottom:12px;}
+.cl-head{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:6px;}
+.cl-item{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:4px;cursor:pointer;}
+.cl-box{width:24px;height:24px;border:2px solid var(--border2);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;}
+.cl-item.comply .cl-box{background:var(--green);border-color:var(--green);color:white;}
+.cl-item.comply .cl-box::after{content:'✓';}
+.cl-item.violation .cl-box{background:var(--red);border-color:var(--red);color:white;}
+.cl-item.violation .cl-box::after{content:'✗';}
+.cl-text{flex:1;font-size:13px;line-height:1.4;}
+.cl-code{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-muted);display:block;margin-top:2px;}
+.cl-item.comply .cl-text{color:var(--text-dim);text-decoration:line-through;}
+.cl-item.violation .cl-text{color:var(--red-light);}
+.rt-card{background:rgba(200,16,46,0.07);border:1px solid rgba(200,16,46,0.3);border-radius:10px;padding:14px;margin-bottom:10px;}
+.rt-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:var(--red-light);letter-spacing:3px;margin-bottom:10px;}
+.rt-row{display:flex;gap:8px;margin-bottom:10px;}
+.rt-opt{flex:1;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;}
+.rt-opt.inop{border-color:var(--red);background:rgba(200,16,46,0.15);}
+.rt-opt.imp{border-color:var(--gold);background:rgba(245,166,35,0.1);}
+.rt-label{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:1px;}
+.rt-sub{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text-dim);margin-top:2px;}
+.tce-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;}
+.tce-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+.tce-sys{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;color:var(--text-dim);}
+.tce-sys.sel{background:rgba(200,16,46,0.15);border-color:var(--red);color:var(--red-light);}
+.tce-status-row{display:flex;gap:8px;}
+.tce-stat{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;text-align:center;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:1px;color:var(--text-dim);}
+.tce-stat.inop{background:rgba(200,16,46,0.15);border-color:var(--red);color:var(--red-light);}
+.tce-stat.imp{background:rgba(245,166,35,0.1);border-color:var(--gold);color:var(--gold);}
+.tce-out{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;display:none;}
+.bottom-bar{background:var(--surface);border-top:1px solid var(--border);padding:12px;display:flex;gap:8px;flex-shrink:0;}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:500;display:none;align-items:flex-end;}
+.modal-bg.open{display:flex;}
+.modal-box{background:var(--surface);border-radius:16px 16px 0 0;border:1px solid var(--border);width:100%;padding:20px;max-height:88vh;overflow-y:auto;position:relative;}
+.mhead{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;letter-spacing:2px;color:var(--red-light);margin-bottom:14px;}
+.mclose{position:absolute;right:16px;top:16px;background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;}
+.fg{margin-bottom:12px;}
+.fg label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;display:block;margin-bottom:5px;}
+.fg input,.fg select,.fg textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;color:var(--text);font-family:'Barlow',sans-serif;font-size:14px;outline:none;}
+.fg input:focus,.fg select:focus{border-color:var(--red);}
+.fg select option{background:var(--surface);}
+.fg textarea{min-height:70px;resize:vertical;}
+.type-row{display:flex;gap:6px;margin-bottom:12px;}
+.type-btn{flex:1;padding:10px 6px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;cursor:pointer;text-align:center;}
+.type-btn.comply{background:rgba(34,197,94,0.15);border-color:var(--green);color:var(--green);}
+.type-btn.violation{background:rgba(200,16,46,0.15);border-color:var(--red);color:var(--red-light);}
+.type-btn.permit{background:rgba(245,166,35,0.1);border-color:var(--gold);color:var(--gold);}
+.save-btn{width:100%;background:var(--red);border:none;border-radius:8px;padding:14px;color:white;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;letter-spacing:2px;cursor:pointer;margin-top:8px;}
+.rbox{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.7;color:var(--text-dim);white-space:pre-wrap;max-height:45vh;overflow-y:auto;margin-bottom:12px;}
+.sig-canvas{width:100%;height:130px;background:white;border-radius:8px;border:2px solid var(--border);display:block;touch-action:none;}
+.sig-row{display:flex;justify-content:space-between;align-items:center;margin-top:6px;margin-bottom:14px;}
+.sig-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);}
+.sig-clear{background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'JetBrains Mono',monospace;font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;}
+.disclaimer{background:rgba(59,158,255,0.08);border:1px solid rgba(59,158,255,0.2);border-radius:6px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:9px;color:#5DADE2;line-height:1.6;margin-bottom:12px;}
+.resume-banner{position:fixed;top:0;left:0;right:0;z-index:900;background:rgba(245,166,35,0.15);border-bottom:2px solid var(--gold);padding:12px 16px;display:flex;align-items:center;gap:12px;}
+.contact-note{background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:6px;padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);margin-top:6px;}
+.hist-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;cursor:pointer;}
+.hist-card:active{border-color:var(--red);}
+.hist-addr{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:1px;margin-bottom:4px;}
+.hist-meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);}
+.hist-pills{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
+.hist-pill{font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border-radius:10px;border:1px solid var(--border);}
+.hist-pill.v{background:rgba(200,16,46,0.15);border-color:var(--red-dark);color:var(--red-light);}
+.hist-pill.c{background:rgba(34,197,94,0.1);border-color:var(--green);color:var(--green);}
+.hist-pill.t{background:rgba(59,158,255,0.1);border-color:var(--blue);color:var(--blue);}
+
+/* Photo tag modal */
+.photo-preview{width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-bottom:12px;border:1px solid var(--border);}
+.email-action-btn{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:14px;color:var(--text);font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;letter-spacing:2px;cursor:pointer;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:8px;}
+.email-action-btn:active{border-color:var(--red);}
+
+/* PHOTO QUEUE */
+.queue-badge{position:absolute;top:-6px;right:-6px;background:var(--gold);color:#000;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;min-width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 5px;}
+.qbtn-wrap{position:relative;flex:1;}
+.queue-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.queue-thumb{position:relative;border-radius:8px;overflow:hidden;border:2px solid var(--border);background:var(--surface2);aspect-ratio:1;cursor:pointer;}
+.queue-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.queue-thumb.tagged{border-color:var(--green);}
+.queue-thumb-flag{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;background:rgba(0,0,0,0.6);}
+.queue-thumb-flag.comply{background:var(--green);}
+.queue-thumb-flag.violation{background:var(--red);}
+.queue-thumb-flag.permit{background:var(--gold);}
+.queue-thumb-num{position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,0.7);color:var(--text-dim);font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 5px;border-radius:3px;}
+.queue-empty{text-align:center;padding:40px 16px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted);}
+.queue-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.queue-count-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold);}
+.flash-overlay{position:fixed;inset:0;background:white;z-index:2000;opacity:0;pointer-events:none;}
+.flash-overlay.flash{animation:flashpulse 0.25s ease-out;}
+@keyframes flashpulse{0%{opacity:0.85}100%{opacity:0}}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface2);border:1px solid var(--green);color:var(--green);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;padding:10px 18px;border-radius:30px;z-index:1500;opacity:0;transition:all 0.25s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.qnav{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.qnav-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--text-dim);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+.qnav-pos{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);}
+</style>
+</head>
+<body>
+
+<!-- LOGIN — custom keypad for Android/Edge compatibility -->
+<div id="loginScreen">
+  <div class="badge">HFD</div>
+  <div class="app-title">INSPECTPRO</div>
+  <div class="app-sub">SCOTT BIEHL · GO1 · (281)380-8586</div>
+  <div class="mode-tag">📱 FIELD MODE</div>
+  <div class="pin-display">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-keypad">
+    <div class="pin-key" data-k="1">1</div>
+    <div class="pin-key" data-k="2">2</div>
+    <div class="pin-key" data-k="3">3</div>
+    <div class="pin-key" data-k="4">4</div>
+    <div class="pin-key" data-k="5">5</div>
+    <div class="pin-key" data-k="6">6</div>
+    <div class="pin-key" data-k="7">7</div>
+    <div class="pin-key" data-k="8">8</div>
+    <div class="pin-key" data-k="9">9</div>
+    <div class="pin-key wide" data-k="0">0</div>
+    <div class="pin-key del" data-k="del">⌫</div>
+  </div>
+  <div class="pin-err" id="pinErr"></div>
+</div>
+
+<div class="screen" id="mainScreen">
+  <div class="field-header">
+    <div class="hfd-tag">HFD</div>
+    <div class="field-title" id="screenTitle">NEW INSPECTION</div>
+    <div class="field-mode">📱 FIELD</div>
+  </div>
+  <div class="scroll-content" id="scrollContent">
+
+    <div class="card" id="addrCard">
+      <div class="lbl">LOCATION</div>
+      <input class="inp" type="text" id="addrInput" placeholder="Address or business name...">
+      <div class="row">
+        <div class="btn" id="voiceAddrBtn">🎤 VOICE</div>
+        <div class="btn red" id="loadBtn">LOAD ▶</div>
+      </div>
+    </div>
+
+    <div class="card" id="typeCard" style="display:none">
+      <div class="lbl">INSPECTION TYPE</div>
+      <div class="occ-wrap" id="typeWrap">
+        <div class="occ-btn active" data-type="IRGO">IRGO</div>
+        <div class="occ-btn" data-type="PCI">PCI</div>
+        <div class="occ-btn" data-type="TCE">TCE</div>
+        <div class="occ-btn" data-type="IRC-311">IRC-311</div>
+        <div class="occ-btn" data-type="IRC-Self">IRC-SELF</div>
+        <div class="occ-btn" data-type="SiteInsp">SITE INSP</div>
+      </div>
+      <div class="lbl" style="margin-top:8px">REPRESENTATIVE</div>
+      <input class="inp" type="text" id="repName" placeholder="Name and title (MOD, Owner...)">
+      <div class="row">
+        <input class="inp" type="tel" id="repPhone" placeholder="Phone #" style="flex:1">
+        <input class="inp" type="email" id="repEmail" placeholder="Email" style="flex:1">
+      </div>
+      <div class="row">
+        <input class="inp" type="text" id="inspNum" placeholder="Insp #" style="flex:1">
+        <input class="inp" type="text" id="apNum" placeholder="A/P #" style="flex:1">
+      </div>
+      <div id="contactNote"></div>
+    </div>
+
+    <div id="priorDiv" style="display:none"></div>
+
+    <div class="tce-card" id="tceCard" style="display:none">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin-bottom:10px">⚡ TCE QUICK ENTRY</div>
+      <div class="lbl">SYSTEM RED TAGGED</div>
+      <div class="tce-grid">
+        <div class="tce-sys" data-sys="Hood System">🔥 HOOD</div>
+        <div class="tce-sys" data-sys="Sprinkler — Wet">💧 SPRINKLER WET</div>
+        <div class="tce-sys" data-sys="Sprinkler — Dry">❄️ SPRINKLER DRY</div>
+        <div class="tce-sys" data-sys="Fire Alarm">🚨 FIRE ALARM</div>
+      </div>
+      <div class="lbl">STATUS</div>
+      <div class="tce-status-row">
+        <div class="tce-stat" id="tceInop" data-stat="inoperable">INOPERABLE</div>
+        <div class="tce-stat" id="tceImp" data-stat="impaired">IMPAIRED</div>
+      </div>
+      <div class="tce-out" id="tceOut"></div>
+      <div class="btn red" id="logTceBtn" style="margin-top:10px;display:block;text-align:center;border-radius:8px;padding:11px">LOG TCE ENTRY</div>
+    </div>
+
+    <div class="voice-card" id="voiceCard" style="display:none">
+      <button class="voice-ring" id="voiceRing">🎤</button>
+      <div class="waveform" id="waveform" style="display:none">
+        <div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div>
+      </div>
+      <div class="vstatus" id="vstatus">SAY "INSPECTOR NOTE" TO CAPTURE</div>
+      <div class="transcript" id="transcript" style="display:none"></div>
+      <div class="tap-row">
+        <div class="btn" id="tapAddBtn">+ TAP ADD</div>
+        <div class="qbtn-wrap">
+          <div class="btn gold" id="photoBtn" style="width:100%">📸 SNAP</div>
+          <div class="queue-badge" id="queueBadge" style="display:none">0</div>
+        </div>
+        <div class="btn" id="codeRefBtn">📋 CODE REF</div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="btn gold" id="reviewQueueBtn" style="position:relative">🗂 REVIEW PHOTOS<span class="queue-badge" id="queueBadge2" style="display:none;top:-8px;right:6px">0</span></div>
+      </div>
+      <input type="file" id="camInput" accept="image/*" capture="environment" style="display:none">
+    </div>
+    <div class="flash-overlay" id="flashOverlay"></div>
+    <div class="toast" id="toast"></div>
+
+    <div id="checklistDiv" style="display:none">
+      <div class="occ-wrap" id="clTypeWrap">
+        <div class="occ-btn active" data-cl="A">ASSEMBLY</div>
+        <div class="occ-btn" data-cl="B">BUSINESS</div>
+        <div class="occ-btn" data-cl="M">MERCANTILE</div>
+        <div class="occ-btn" data-cl="S">STRUCTURE</div>
+        <div class="occ-btn" data-cl="H">HAZMAT</div>
+      </div>
+      <div id="clContent"></div>
+    </div>
+
+    <div id="entriesDiv" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;letter-spacing:2px;color:var(--text-dim)">ENTRIES</div>
+        <div id="entCount" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim)">0 items</div>
+      </div>
+      <div id="entryList"></div>
+    </div>
+
+    <div class="rt-card" id="rtCard" style="display:none">
+      <div class="rt-title">🚨 RED TAG</div>
+      <div class="rt-row">
+        <div class="rt-opt" id="rtInop">
+          <div class="rt-label" style="color:var(--red-light)">INOPERABLE</div>
+          <div class="rt-sub">72 HR · Fire Watch</div>
+        </div>
+        <div class="rt-opt" id="rtImp">
+          <div class="rt-label" style="color:var(--gold)">IMPAIRED</div>
+          <div class="rt-sub">10-14 Days</div>
+        </div>
+      </div>
+      <div id="rtDetail" style="display:none"></div>
+    </div>
+
+  </div>
+  <div class="bottom-bar">
+    <div class="btn" id="listBtn">☑ LIST</div>
+    <div class="btn" id="tagBtn">🚨 TAG</div>
+    <div class="btn green" id="reportBtn">📄 REPORT</div>
+    <div class="btn" id="historyBtn">🗃 HISTORY</div>
+    <div class="btn red" id="saveBtn">✅ FINISH</div>
+  </div>
+</div>
+
+<!-- ENTRY MODAL -->
+<div class="modal-bg" id="entryModal">
+  <div class="modal-box">
+    <div class="mhead">ADD ENTRY</div>
+    <button class="mclose" data-close="entryModal">✕</button>
+    <div class="type-row">
+      <div class="type-btn comply" data-etype="comply">✅ COMPLY</div>
+      <div class="type-btn violation" data-etype="violation">❌ VIOLATION</div>
+      <div class="type-btn permit" data-etype="permit">💰 PERMIT</div>
+    </div>
+    <div class="fg"><label>Category</label>
+      <select id="eCat">
+        <option>Egress / Exit Doors</option><option>Exit Signs</option><option>Emergency Lighting</option>
+        <option>Fire Extinguisher</option><option>Sprinkler System</option><option>Fire Alarm</option>
+        <option>Hood System</option><option>Suppression System</option><option>Storage Height</option>
+        <option>Occupant Load</option><option>Permit Status</option><option>Hazmat Storage</option>
+        <option>Electrical Panel</option><option>Building ID / Address</option><option>Elevator</option>
+        <option>Common Areas</option><option>Exterior / Parking</option><option>Other</option>
+      </select>
+    </div>
+    <div class="fg"><label>Code Reference</label>
+      <select id="eCode">
+        <option value="IFC 1010.1.9">IFC 1010.1.9 — Exit Door</option>
+        <option value="IFC 1013">IFC 1013 — Exit Signs</option>
+        <option value="IFC 1008">IFC 1008 — Emergency Lighting</option>
+        <option value="IFC 906.3 / LSB §13-25">IFC 906.3 / LSB §13-25 — Extinguisher</option>
+        <option value="IFC 903">IFC 903 — Sprinkler System</option>
+        <option value="IFC 907 / LSB 2.4.1.1">IFC 907 / LSB 2.4.1.1 — Fire Alarm</option>
+        <option value="IFC 904.12 / LSB §13-27">IFC 904.12 / LSB §13-27 — Hood System</option>
+        <option value="IFC 315.3.1">IFC 315.3.1 — Storage Clearance</option>
+        <option value="IFC 1004.3">IFC 1004.3 — Occupant Load</option>
+        <option value="IFC 605.3">IFC 605.3 — Electrical Panel</option>
+        <option value="IFC 1018.2">IFC 1018.2 — Aisle Width</option>
+        <option value="IFC 403.12.3">IFC 403.12.3 — Crowd Management</option>
+        <option value="LSB §13-30">LSB §13-30 — Flammable Storage</option>
+        <option value="IFC 5101">IFC 5101 — Aerosol Storage</option>
+        <option value="IFC 807">IFC 807 — Decorative Materials</option>
+        <option value="IFC 912">IFC 912 — FDC Connection</option>
+        <option value="IFC 905">IFC 905 — Standpipe</option>
+        <option value="[A] 112.2">[A] 112.2 — Owner Responsibility</option>
+        <option value="IFC2021.107.1.3.1">IFC2021.107.1.3.1 — Reinspection Fee</option>
+        <option value="OTHER">Other — Enter Below</option>
+      </select>
+    </div>
+    <div class="fg"><label>Custom Code</label><input type="text" id="eCustom" placeholder="e.g. IFC 308.1.4"></div>
+    <div class="fg"><label>Tag / Service Date</label><input type="month" id="eTag"></div>
+    <div class="fg"><label>Notes</label><textarea id="eNotes" placeholder="What did you observe..."></textarea></div>
+    <div class="fg"><label>Photo</label><input type="file" accept="image/*" capture="environment" id="ePhoto" style="color:var(--text-dim);font-size:12px"></div>
+    <button class="save-btn" id="saveEntryBtn">SAVE ENTRY</button>
+  </div>
+</div>
+
+<!-- PHOTO QUEUE REVIEW MODAL -->
+<div class="modal-bg" id="photoModal">
+  <div class="modal-box">
+    <div class="mhead">🗂 PHOTO QUEUE</div>
+    <button class="mclose" data-close="photoModal">✕</button>
+    <div id="queueGridView">
+      <div class="queue-header-row">
+        <div class="queue-count-tag" id="queueSummary">0 photos</div>
+        <div class="btn" id="queueDoneBtn" style="flex:0;padding:8px 16px">DONE</div>
+      </div>
+      <div class="queue-grid" id="queueGrid"></div>
+      <div class="queue-empty" id="queueEmptyMsg" style="display:none">No photos yet.<br>Tap 📸 SNAP while walking to capture.</div>
+    </div>
+    <div id="queueTagView" style="display:none">
+      <div class="qnav">
+        <div class="qnav-btn" id="qPrevBtn">‹ PREV</div>
+        <div class="qnav-pos" id="qPos">1 / 1</div>
+        <div class="qnav-btn" id="qNextBtn">NEXT ›</div>
+      </div>
+      <img id="photoPreview" class="photo-preview" src="" alt="Captured photo" style="max-height:220px">
+      <div class="type-row">
+        <div class="type-btn comply" data-ptype="comply">✅ COMPLY</div>
+        <div class="type-btn violation" data-ptype="violation">❌ VIOLATION</div>
+        <div class="type-btn permit" data-ptype="permit">💰 PERMIT</div>
+      </div>
+      <div class="fg"><label>What does this show?</label>
+        <select id="pCat">
+          <option>Fire Extinguisher</option>
+          <option>Hood System</option>
+          <option>Fire Alarm</option>
+          <option>Sprinkler System</option>
+          <option>Egress / Exit Doors</option>
+          <option>Exit Signs</option>
+          <option>Emergency Lighting</option>
+          <option>Electrical Panel</option>
+          <option>Storage Height</option>
+          <option>Occupant Load</option>
+          <option>Permit Status</option>
+          <option>Building ID / Address</option>
+          <option>Common Areas</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="fg"><label>Code Reference</label>
+        <select id="pCode">
+          <option value="IFC 906.3 / LSB §13-25">IFC 906.3 / LSB §13-25 — Extinguisher</option>
+          <option value="IFC 904.12 / LSB §13-27">IFC 904.12 / LSB §13-27 — Hood System</option>
+          <option value="IFC 907 / LSB 2.4.1.1">IFC 907 / LSB 2.4.1.1 — Fire Alarm</option>
+          <option value="IFC 903">IFC 903 — Sprinkler System</option>
+          <option value="IFC 1010.1.9">IFC 1010.1.9 — Exit Door</option>
+          <option value="IFC 1013">IFC 1013 — Exit Signs</option>
+          <option value="IFC 1008">IFC 1008 — Emergency Lighting</option>
+          <option value="IFC 605.3">IFC 605.3 — Electrical Panel</option>
+          <option value="IFC 315.3.1">IFC 315.3.1 — Storage Clearance</option>
+          <option value="IFC 1004.3">IFC 1004.3 — Occupant Load</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div class="fg"><label>Notes (optional)</label><input type="text" id="pNotes" placeholder="e.g. Tag expired Jan 2024"></div>
+      <button class="save-btn" id="savePhotoBtn">💾 SAVE TO INSPECTION</button>
+      <div class="row" style="margin-top:8px">
+        <div class="btn" id="deletePhotoBtn" style="background:rgba(200,16,46,0.1);border-color:var(--red-dark);color:var(--red-light)">🗑 DELETE PHOTO</div>
+        <div class="btn" id="backToGridBtn">‹ BACK TO GRID</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CODE MODAL -->
+<div class="modal-bg" id="codeModal">
+  <div class="modal-box">
+    <div class="mhead">CODE REFERENCE</div>
+    <button class="mclose" data-close="codeModal">✕</button>
+    <div class="fg"><label>Search</label><input type="text" id="codeQ" placeholder="e.g. hood system, egress, sprinkler..." style="font-size:16px"></div>
+    <div id="codeResults"></div>
+  </div>
+</div>
+
+<!-- REPORT MODAL — FIX: tap-to-email buttons instead of auto-trigger -->
+<div class="modal-bg" id="reportModal">
+  <div class="modal-box">
+    <div class="mhead">INSPECTION SUMMARY</div>
+    <button class="mclose" data-close="reportModal">✕</button>
+    <div class="rbox" id="reportContent"></div>
+    <button class="save-btn" id="copyReportBtn">📋 COPY TO CLIPBOARD</button>
+    <button class="email-action-btn" id="emailRepBtn">📧 EMAIL TO REP</button>
+    <button class="email-action-btn" id="emailSelfBtn">📧 EMAIL TO MYSELF</button>
+  </div>
+</div>
+
+<!-- SIGNATURE MODAL -->
+<div class="modal-bg" id="sigModal">
+  <div class="modal-box">
+    <div class="mhead">✍️ FIELD ACKNOWLEDGMENT</div>
+    <button class="mclose" data-close="sigModal">✕</button>
+    <div id="sigSummary" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);line-height:1.6;margin-bottom:12px;max-height:100px;overflow-y:auto"></div>
+    <div class="lbl">INSPECTOR SIGNATURE — SCOTT BIEHL</div>
+    <canvas class="sig-canvas" id="inspCanvas"></canvas>
+    <div class="sig-row">
+      <div class="sig-time" id="inspSigTime"></div>
+      <button class="sig-clear" data-sigclear="inspCanvas" data-timeclear="inspSigTime">CLEAR</button>
+    </div>
+    <div class="lbl">REPRESENTATIVE SIGNATURE</div>
+    <div id="repNameDisp" style="font-size:12px;color:var(--text-dim);margin-bottom:6px"></div>
+    <canvas class="sig-canvas" id="repCanvas"></canvas>
+    <div class="sig-row">
+      <div class="sig-time" id="repSigTime"></div>
+      <button class="sig-clear" data-sigclear="repCanvas" data-timeclear="repSigTime">CLEAR</button>
+    </div>
+    <div class="disclaimer">DISCLAIMER: This field acknowledgment is NOT the official Notice of Violation. The official NOV will be delivered via the Houston Fire Department INFOR system. This document acknowledges the representative's presence during inspection and receipt of verbal findings only.</div>
+    <button class="save-btn" id="completeSigBtn">✅ COMPLETE &amp; SAVE</button>
+    <button class="save-btn" id="skipSigBtn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);margin-top:6px">REP NOT AVAILABLE — SKIP</button>
+  </div>
+</div>
+
+<!-- EMAIL MODAL — shows after save, user taps to send -->
+<div class="modal-bg" id="emailModal">
+  <div class="modal-box">
+    <div class="mhead">📧 SEND ACKNOWLEDGMENT</div>
+    <button class="mclose" data-close="emailModal">✕</button>
+    <div id="emailSummaryBox" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);line-height:1.6;margin-bottom:16px;max-height:120px;overflow-y:auto"></div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);margin-bottom:12px">Inspection saved ✅ — tap below to send email</div>
+    <button class="email-action-btn" id="sendRepEmailBtn">📧 SEND TO REP + CC MYSELF</button>
+    <button class="email-action-btn" id="sendSelfEmailBtn" style="margin-top:8px">📧 SEND TO MYSELF ONLY</button>
+    <button class="save-btn" id="skipEmailBtn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);margin-top:8px">SKIP — DONE</button>
+  </div>
+</div>
+
+<!-- PAST INSPECTIONS MODAL -->
+<div class="modal-bg" id="historyModal">
+  <div class="modal-box">
+    <div class="mhead">🗃 PAST INSPECTIONS</div>
+    <button class="mclose" data-close="historyModal">✕</button>
+    <div class="fg"><label>Search address</label><input type="text" id="histSearch" placeholder="Street name or business..."></div>
+    <div id="histList"></div>
+  </div>
+</div>
+
+<!-- PAST INSPECTION DETAIL MODAL -->
+<div class="modal-bg" id="histDetailModal">
+  <div class="modal-box">
+    <div class="mhead" id="histDetailTitle">INSPECTION</div>
+    <button class="mclose" data-close="histDetailModal">✕</button>
+    <div class="rbox" id="histDetailContent"></div>
+    <button class="save-btn" id="histCopyBtn">📋 COPY REPORT</button>
+    <button class="save-btn" id="histEmailBtn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);margin-top:6px">📧 EMAIL REPORT</button>
+  </div>
+</div>
+<div class="modal-bg" id="fwModal">
+  <div class="modal-box">
+    <div class="mhead">🚨 FIRE WATCH — INOPERABLE</div>
+    <button class="mclose" data-close="fwModal">✕</button>
+    <div class="lbl">COMMAND APPROVAL</div>
+    <div class="row" style="margin-bottom:12px">
+      <div class="btn green" id="fwApproveBtn">✅ APPROVED</div>
+      <div class="btn" id="fwDenyBtn" style="background:rgba(200,16,46,0.15);border-color:var(--red);color:var(--red-light)">❌ DENIED</div>
+    </div>
+    <div id="fwDeniedContent" style="display:none">
+      <div style="background:rgba(200,16,46,0.1);border:1px solid var(--red-dark);border-radius:6px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--red-light);margin-bottom:10px;line-height:1.6">⏱ 72 HOUR COUNTDOWN STARTS NOW<br>Denial documented — liability transferred</div>
+      <div class="fg"><label>System Inoperable</label><input type="text" id="fwSys" placeholder="e.g. Fire Alarm System"></div>
+      <div class="fg"><label>Systems Still Active</label><input type="text" id="fwActive" placeholder="e.g. Sprinkler System operational"></div>
+      <div class="fg"><label>Business Contact Email</label><input type="email" id="fwEmail" placeholder="manager@business.com"></div>
+      <button class="save-btn" id="genFWBtn">📄 COPY FIRE WATCH DOCUMENT</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var APP_PIN = '1234';
+  var pinBuffer = '';
+  var currentAddr = '';
+  var currentType = 'IRGO';
+  var currentEntryType = 'comply';
+  var currentPhotoType = 'comply';
+  var tceSysVal = '';
+  var tceStatVal = '';
+  var entries = [];
+  var photoQueue = []; // {id, data, tagged, type, category, code, notes}
+  var queueViewIndex = 0;
+  var voiceOn = false;
+  var recognition = null;
+  var pendingAckText = '';
+  var pendingRepEmail = '';
+
+  // ── DATA ──
+  var TCE = {
+    'Hood System': {
+      inoperable: {code:'IFC 904.12 / LSB §13-27', cite:'Hood suppression system INOPERABLE. Semi-annual service required. System non-functional.', timeline:'72 HOURS', watch:true},
+      impaired:   {code:'IFC 904.12 / LSB §13-27', cite:'Hood suppression system IMPAIRED. Degraded function. Semi-annual service required.', timeline:'10-14 DAYS', watch:false}
+    },
+    'Sprinkler — Wet': {
+      inoperable: {code:'IFC 903.2', cite:'Wet pipe sprinkler system INOPERABLE. No fire suppression protection.', timeline:'72 HOURS', watch:true},
+      impaired:   {code:'IFC 903.2', cite:'Wet pipe sprinkler system IMPAIRED. Partial coverage only.', timeline:'10-14 DAYS', watch:false}
+    },
+    'Sprinkler — Dry': {
+      inoperable: {code:'IFC 903.2', cite:'Dry pipe sprinkler system INOPERABLE. No fire suppression protection.', timeline:'72 HOURS', watch:true},
+      impaired:   {code:'IFC 903.2', cite:'Dry pipe sprinkler system IMPAIRED. Degraded coverage.', timeline:'10-14 DAYS', watch:false}
+    },
+    'Fire Alarm': {
+      inoperable: {code:'IFC 907 / LSB 2.4.1.1', cite:'Fire alarm system INOPERABLE. No detection or notification capability.', timeline:'72 HOURS', watch:true},
+      impaired:   {code:'IFC 907 / LSB 2.4.1.1', cite:'Fire alarm system IMPAIRED. Partial detection/notification only.', timeline:'10-14 DAYS', watch:false}
+    }
+  };
+
+  var CODES = [
+    {code:'IFC 904.12 / LSB §13-27', topic:'Hood System', detail:'Kitchen hood suppression system requires semi-annual service. Tag must be current and affixed.', timeline:'Inoperable: 72hr | Overdue service: 30 days'},
+    {code:'IFC 903', topic:'Sprinkler System', detail:'Automatic sprinkler must be operational. No missing, painted, or obstructed heads. 18" clearance below deflectors.', timeline:'Impairment: Immediate | Minor deficiency: 30 days'},
+    {code:'IFC 907 / LSB 2.4.1.1', topic:'Fire Alarm', detail:'Fire alarm must be tested and tagged annually. Includes all detectors, pull stations, annunciators, strobes, control units.', timeline:'Inoperable: 72hr | Annual overdue: 30 days'},
+    {code:'IFC 906.3 / LSB §13-25', topic:'Fire Extinguisher', detail:'Must have current annual inspection tag. Must be mounted, accessible, and within travel distance.', timeline:'30 days'},
+    {code:'IFC 1010.1.9', topic:'Egress / Exit Doors', detail:'Exit doors must be operable from egress side without key or special knowledge during occupancy.', timeline:'Immediately — life safety'},
+    {code:'IFC 1013', topic:'Exit Signs', detail:'Exit signs must be continuously illuminated at each exit and wherever direction to exit is not obvious.', timeline:'30 days'},
+    {code:'IFC 1008', topic:'Emergency Lighting', detail:'Required in corridors and stairways. Must operate minimum 90 minutes on battery backup.', timeline:'30 days'},
+    {code:'IFC 315.3.1', topic:'Storage Height', detail:'Minimum 18-inch clearance below sprinkler deflectors required at all times.', timeline:'10 days'},
+    {code:'IFC 1004.3', topic:'Occupant Load', detail:'Approved occupant load sign required at main entrance of assembly occupancies.', timeline:'30 days'},
+    {code:'IFC 605.3', topic:'Electrical Panel', detail:'36-inch clear workspace required. All knockouts sealed. Panel labeled. Door operational.', timeline:'30 days'},
+    {code:'IFC 1018.2', topic:'Aisle Width', detail:'Minimum 44-inch aisle width in assembly occupancies. Must remain clear and unobstructed.', timeline:'Immediately if blocked'},
+    {code:'IFC 403.12.3', topic:'Crowd Management', detail:'Required at assembly occupancies with 250 or more occupants during all events.', timeline:'Prior to next event'},
+    {code:'LSB §13-30', topic:'Flammable Liquids', detail:'Must be stored in approved containers within quantity limits with proper containment and ventilation.', timeline:'Immediately if serious | 30 days general'},
+    {code:'IFC 505.1', topic:'Address Identification', detail:'Building numbers must be visible from street. Minimum 4 inches, contrasting color, maintained.', timeline:'30 days'}
+  ];
+
+  var CL = {
+    A: [
+      {s:'Egress', items:[{l:'Exit doors — operable, correct swing',c:'IFC 1010.1.9'},{l:'Exit signs — illuminated',c:'IFC 1013'},{l:'Emergency lighting — functional',c:'IFC 1008'},{l:'Aisles clear — min 44"',c:'IFC 1018.2'},{l:'Occupant load posted',c:'IFC 1004.3'}]},
+      {s:'Fire Protection', items:[{l:'Sprinkler system — operational',c:'IFC 903'},{l:'Fire alarm — no faults',c:'IFC 907 / LSB 2.4.1.1'},{l:'Hood system — tag current (6mo)',c:'IFC 904.12 / LSB §13-27'},{l:'Fire extinguisher — tagged, mounted',c:'IFC 906.3 / LSB §13-25'},{l:'Pull stations accessible',c:'IFC 907.4.2'}]},
+      {s:'Permits & Occupancy', items:[{l:'Assembly permit (P2) posted',c:'IFC 105.1'},{l:'Fire alarm permit current',c:'IFC 105.1'},{l:'Occupancy not exceeded',c:'IFC 1004'},{l:'Crowd management (250+ occupants)',c:'IFC 403.12.3'}]},
+      {s:'Housekeeping', items:[{l:'18" sprinkler clearance maintained',c:'IFC 315.3.1'},{l:'No combustible accumulation',c:'IFC 315'},{l:'Electrical panel clear — 36"',c:'IFC 605.3'}]}
+    ],
+    B: [
+      {s:'Egress', items:[{l:'Exit doors operable',c:'IFC 1010'},{l:'Exit signs illuminated',c:'IFC 1013'},{l:'Emergency lighting operational',c:'IFC 1008'},{l:'Corridors clear — 44"',c:'IFC 1020'}]},
+      {s:'Fire Protection', items:[{l:'Fire extinguisher — inspected, tagged',c:'IFC 906.3 / LSB §13-25'},{l:'Sprinkler operational (if required)',c:'IFC 903'},{l:'Fire alarm functional (if required)',c:'IFC 907'}]},
+      {s:'Housekeeping', items:[{l:'18" sprinkler clearance',c:'IFC 315.3.1'},{l:'Electrical panel accessible',c:'IFC 605.3'},{l:'No combustibles in mechanical rooms',c:'IFC 315'}]}
+    ],
+    M: [
+      {s:'Egress', items:[{l:'Exit doors operational',c:'IFC 1010'},{l:'Exit signs — sales floor and stockroom',c:'IFC 1013'},{l:'Emergency lighting functional',c:'IFC 1008'},{l:'Occupant load posted',c:'IFC 1004.3'}]},
+      {s:'Fire Protection', items:[{l:'Sprinkler — includes stockroom',c:'IFC 903'},{l:'Fire extinguisher — tagged',c:'IFC 906.3 / LSB §13-25'},{l:'Hood system current (if applicable)',c:'IFC 904.12'},{l:'Fire alarm functional (if required)',c:'IFC 907'}]},
+      {s:'Storage', items:[{l:'18" sprinkler clearance',c:'IFC 315.3.1'},{l:'Aerosol storage compliant',c:'IFC 5101'},{l:'Flammable liquids proper storage',c:'LSB §13-30'}]}
+    ],
+    S: [
+      {s:'Structure / Common Areas', items:[{l:'Building address visible from street',c:'IFC 505.1'},{l:'Common area egress clear',c:'IFC 1020'},{l:'Exit signs in corridors',c:'IFC 1013'},{l:'Emergency lighting — common areas',c:'IFC 1008'},{l:'Main sprinkler riser operational',c:'IFC 903'},{l:'Fire alarm main panel — no faults',c:'IFC 907 / LSB 2.4.1.1'},{l:'FDC accessible and capped',c:'IFC 912'},{l:'Standpipe connections accessible',c:'IFC 905'},{l:'Elevator recall functional',c:'IFC 3007'},{l:'Parking/exterior egress clear',c:'IFC 503'},{l:'Mechanical rooms — no combustibles',c:'IFC 315'}]}
+    ],
+    H: [
+      {s:'Hazmat', items:[{l:'Chemical storage within limits',c:'IFC 5001'},{l:'Secondary containment in place',c:'IFC 5004'},{l:'Ventilation operational',c:'IFC 5004.3'},{l:'Flammable liquids compliant',c:'LSB §13-30'},{l:'Hazmat permit current',c:'IFC 105.6'},{l:'Emergency contact posted',c:'IFC 5003.4'}]}
+    ]
+  };
+
+  function el(id) { return document.getElementById(id); }
+  function show(id) { var e = el(id); if(e) e.style.display = 'block'; }
+  function hide(id) { var e = el(id); if(e) e.style.display = 'none'; }
+  function openModal(id) { var e = el(id); if(e) e.classList.add('open'); }
+  function closeModal(id) { var e = el(id); if(e) e.classList.remove('open'); }
+
+  // ── STORAGE ──
+  function getContacts() { try { return JSON.parse(localStorage.getItem('ip_contacts') || '{}'); } catch(e) { return {}; } }
+  function saveContacts(c) { localStorage.setItem('ip_contacts', JSON.stringify(c)); }
+  function autoSave() {
+    if(!currentAddr || (!entries.length && !photoQueue.length)) return;
+    try {
+      var entriesLite = entries.map(function(e) {
+        var copy = Object.assign({}, e); delete copy.photoData; return copy;
+      });
+      var queueLite = photoQueue.map(function(p) {
+        return {id: p.id, tagged: p.tagged, type: p.type, category: p.category, code: p.code, notes: p.notes};
+      });
+      var draft = {
+        addr: currentAddr, type: currentType, entries: entriesLite, photoQueue: queueLite,
+        rep: el('repName') ? el('repName').value : '',
+        repPhone: el('repPhone') ? el('repPhone').value : '',
+        repEmail: el('repEmail') ? el('repEmail').value : '',
+        inspNum: el('inspNum') ? el('inspNum').value : '',
+        apNum: el('apNum') ? el('apNum').value : '',
+        savedAt: new Date().toLocaleTimeString()
+      };
+      localStorage.setItem('ip_draft', JSON.stringify(draft));
+    } catch(e) {}
+  }
+
+  // ── PIN KEYPAD (works on all browsers/platforms) ──
+  document.querySelectorAll('.pin-key').forEach(function(key) {
+    key.addEventListener('click', function() {
+      var k = key.getAttribute('data-k');
+      if(k === 'del') {
+        pinBuffer = pinBuffer.slice(0, -1);
+      } else if(pinBuffer.length < 4) {
+        pinBuffer += k;
+      }
+      updatePinDots();
+      if(pinBuffer.length === 4) {
+        setTimeout(doLogin, 120);
+      }
+    });
+  });
+
+  function updatePinDots() {
+    for(var i = 0; i < 4; i++) {
+      var dot = el('d' + i);
+      if(dot) dot.classList.toggle('filled', i < pinBuffer.length);
+    }
+  }
+
+  function doLogin() {
+    if(pinBuffer === APP_PIN) {
+      el('loginScreen').style.display = 'none';
+      el('mainScreen').classList.add('active');
+      initVoice();
+      setInterval(autoSave, 30000);
+      checkResume();
+    } else {
+      pinBuffer = '';
+      updatePinDots();
+      el('pinErr').textContent = 'Incorrect PIN — try again';
+      setTimeout(function() { el('pinErr').textContent = ''; }, 2000);
+    }
+  }
+
+  // ── RESUME ──
+  function checkResume() {
+    var draft = null;
+    try { draft = JSON.parse(localStorage.getItem('ip_draft')); } catch(e) {}
+    if(!draft || !draft.addr || ((!draft.entries || !draft.entries.length) && (!draft.photoQueue || !draft.photoQueue.length))) return;
+    var photoCount = (draft.photoQueue || []).length;
+    var banner = document.createElement('div');
+    banner.className = 'resume-banner';
+    banner.id = 'resumeBanner';
+    banner.innerHTML = '<div style="flex:1"><div style="font-family:Barlow Condensed,sans-serif;font-size:14px;font-weight:800;color:var(--gold);letter-spacing:1px">⚠ UNSAVED INSPECTION</div><div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text-dim);margin-top:2px">' + draft.addr + ' · ' + (draft.entries||[]).length + ' entries · ' + photoCount + ' photos · ' + draft.savedAt + '</div></div><button id="resumeBtn" style="background:var(--gold);border:none;border-radius:6px;padding:8px 14px;color:black;font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:800;cursor:pointer">RESUME</button><button id="discardBtn" style="background:none;border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text-dim);font-family:JetBrains Mono,monospace;font-size:10px;cursor:pointer;margin-left:6px">DISCARD</button>';
+    document.body.appendChild(banner);
+    el('resumeBtn').addEventListener('click', function() {
+      var d = null;
+      try { d = JSON.parse(localStorage.getItem('ip_draft')); } catch(e) {}
+      if(!d) return;
+      currentAddr = d.addr; currentType = d.type || 'IRGO'; entries = d.entries || []; photoQueue = d.photoQueue || [];
+      el('addrInput').value = d.addr;
+      el('screenTitle').textContent = d.addr.split(' ').slice(0,3).join(' ').toUpperCase();
+      if(el('repName')) el('repName').value = d.rep || '';
+      if(el('repPhone')) el('repPhone').value = d.repPhone || '';
+      if(el('repEmail')) el('repEmail').value = d.repEmail || '';
+      if(el('inspNum')) el('inspNum').value = d.inspNum || '';
+      if(el('apNum')) el('apNum').value = d.apNum || '';
+      show('typeCard'); show('voiceCard'); show('entriesDiv');
+      renderEntries();
+      updateQueueBadge();
+      var b = el('resumeBanner'); if(b) b.remove();
+      alert('Inspection resumed! ' + entries.length + ' entries, ' + photoQueue.length + ' photos restored.');
+    });
+    el('discardBtn').addEventListener('click', function() {
+      localStorage.removeItem('ip_draft');
+      var b = el('resumeBanner'); if(b) b.remove();
+    });
+  }
+
+  // ── CONTACT DB ──
+  function lookupContact(addr) {
+    if(!addr || addr.length < 4) return null;
+    var contacts = getContacts();
+    var key = addr.toLowerCase().split(' ').slice(0,4).join(' ');
+    var match = Object.keys(contacts).find(function(k) {
+      return k.indexOf(key.split(' ')[0]) >= 0;
+    });
+    return match ? contacts[match] : null;
+  }
+
+  function saveContact(addr, name, phone, email) {
+    if(!addr || !email) return;
+    var contacts = getContacts();
+    var key = addr.toLowerCase().split(' ').slice(0,4).join(' ');
+    var existing = contacts[key];
+    if(existing && existing.email !== email) {
+      existing.history = existing.history || [];
+      existing.history.unshift({name: existing.name, phone: existing.phone, email: existing.email, until: new Date().toLocaleDateString()});
+      setTimeout(function() { alert('⚠ Contact updated for ' + addr + '\nOld: ' + existing.email + '\nNew: ' + email); }, 500);
+    }
+    contacts[key] = {addr: addr, name: name, phone: phone, email: email, updated: new Date().toLocaleDateString(), history: (existing && existing.history) || []};
+    saveContacts(contacts);
+  }
+
+  // ── LOAD LOCATION ──
+  el('loadBtn').addEventListener('click', function() {
+    var addr = el('addrInput').value.trim();
+    if(!addr) { alert('Enter an address first.'); return; }
+    currentAddr = addr;
+    el('screenTitle').textContent = addr.split(' ').slice(0,3).join(' ').toUpperCase();
+    show('typeCard'); show('voiceCard'); show('entriesDiv');
+    loadPrior(addr);
+    var contact = lookupContact(addr);
+    if(contact) {
+      el('repName').value = contact.name || '';
+      el('repPhone').value = contact.phone || '';
+      el('repEmail').value = contact.email || '';
+      var note = document.createElement('div');
+      note.className = 'contact-note';
+      note.textContent = '✅ Contact auto-filled — ' + contact.name + ' · Updated ' + contact.updated;
+      el('contactNote').innerHTML = '';
+      el('contactNote').appendChild(note);
+      setTimeout(function() { note.remove(); }, 4000);
+    }
+  });
+
+  el('voiceAddrBtn').addEventListener('click', function() {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR) { alert('Voice not available. Type address.'); return; }
+    var r = new SR(); r.lang = 'en-US';
+    r.onresult = function(e) { el('addrInput').value = e.results[0][0].transcript; };
+    r.start();
+  });
+
+  // ── INSPECTION TYPE ──
+  document.querySelectorAll('#typeWrap .occ-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('#typeWrap .occ-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      currentType = btn.getAttribute('data-type');
+      if(currentType === 'TCE') show('tceCard'); else hide('tceCard');
+    });
+  });
+
+  // ── PRIOR VIOLATIONS ──
+  function loadPrior(addr) {
+    var saved = []; try { saved = JSON.parse(localStorage.getItem('ip_inspections') || '[]'); } catch(e) {}
+    var triage = []; try { triage = JSON.parse(localStorage.getItem('ip_triage') || '[]'); } catch(e) {}
+    var key = addr.toLowerCase().split(' ')[0];
+    var prior = saved.filter(function(s) { return s.addr && s.addr.toLowerCase().indexOf(key) >= 0; });
+    var triageHist = triage.filter(function(t) { return t.address && t.address.toLowerCase().indexOf(key) >= 0; }).slice(0,5);
+    var html = '';
+    if(prior.length) {
+      var last = prior[0];
+      var viol = (last.entries || []).filter(function(e) { return e.type === 'violation'; });
+      if(viol.length) {
+        html = '<div class="prior-card"><div class="prior-title">⚠ PRIOR VIOLATIONS — ' + (last.date || '—') + '</div><div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--red-light);margin-bottom:8px;letter-spacing:1px">CHECK ON THIS VISIT:</div>';
+        viol.forEach(function(v) {
+          html += '<div class="prior-item"><div style="font-size:16px;flex-shrink:0">❌</div><div><div style="font-size:13px;font-weight:600">' + (v.category || v.text || 'Violation') + '</div><div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--gold)">' + (v.code || '') + '</div>' + (v.note ? '<div style="font-size:11px;color:var(--text-dim)">' + v.note + '</div>' : '') + '</div></div>';
+        });
+        html += '<div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text-dim);margin-top:8px">Last visit: ' + (last.type || '') + ' · ' + (last.date || '—') + '</div></div>';
+      }
+    } else if(triageHist.length) {
+      html = '<div class="prior-card"><div class="prior-title">📋 INFOR HISTORY</div>';
+      triageHist.forEach(function(t) {
+        var c = t.result === 'Comply' ? 'var(--green)' : t.result === 'NoComply' ? 'var(--red-light)' : 'var(--gold)';
+        html += '<div class="prior-item"><div style="font-size:14px;flex-shrink:0">' + (t.result === 'Comply' ? '✅' : t.result === 'NoComply' ? '❌' : '🟡') + '</div><div><div style="font-size:13px;font-weight:600">' + (t.appType || '') + ' #' + (t.inspNum || '') + ' · ' + (t.type || '') + '</div><div style="font-family:JetBrains Mono,monospace;font-size:10px;color:' + c + '">' + (t.result || 'Pending') + '</div><div style="font-size:11px;color:var(--text-dim)">' + ((t.scheduled || '').split(' ')[0] || '') + '</div></div></div>';
+      });
+      html += '</div>';
+    } else {
+      html = '<div class="prior-card" style="border-color:var(--border)"><div style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text-dim)">💡 No prior history found for this address.</div></div>';
+    }
+    el('priorDiv').innerHTML = html;
+    show('priorDiv');
+  }
+
+  // ── TCE ──
+  document.querySelectorAll('.tce-sys').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.tce-sys').forEach(function(b) { b.classList.remove('sel'); });
+      btn.classList.add('sel');
+      tceSysVal = btn.getAttribute('data-sys');
+      showTCEOut();
+    });
+  });
+  el('tceInop').addEventListener('click', function() { tceStatVal = 'inoperable'; el('tceInop').classList.add('inop'); el('tceImp').classList.remove('imp'); showTCEOut(); });
+  el('tceImp').addEventListener('click', function() { tceStatVal = 'impaired'; el('tceImp').classList.add('imp'); el('tceInop').classList.remove('inop'); showTCEOut(); });
+
+  function showTCEOut() {
+    if(!tceSysVal || !tceStatVal) return;
+    var d = TCE[tceSysVal] && TCE[tceSysVal][tceStatVal];
+    if(!d) return;
+    var out = el('tceOut');
+    out.style.display = 'block';
+    out.style.color = tceStatVal === 'inoperable' ? 'var(--red-light)' : 'var(--gold)';
+    out.textContent = tceSysVal + ' — ' + tceStatVal.toUpperCase() + '\n\nCode: ' + d.code + '\n\nCitation: ' + d.cite + '\n\nTimeline: ' + d.timeline + (d.watch ? '\n\n⚠ FIRE WATCH MAY BE REQUIRED' : '');
+  }
+
+  el('logTceBtn').addEventListener('click', function() {
+    if(!tceSysVal || !tceStatVal) { alert('Select system and status first.'); return; }
+    var d = TCE[tceSysVal][tceStatVal];
+    entries.push({id: Date.now(), category: tceSysVal, code: d.code, type: 'violation', note: tceStatVal.toUpperCase() + ' — ' + d.timeline, text: tceSysVal});
+    renderEntries();
+    if(d.watch) openModal('fwModal');
+    else alert('TCE entry logged.\nTimeline: ' + d.timeline + '\nNo fire watch required.');
+  });
+
+  // ── VOICE ──
+  function initVoice() {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR) return;
+    recognition = new SR();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    recognition.onresult = function(e) {
+      var t = Array.from(e.results).map(function(r) { return r[0].transcript; }).join('').toLowerCase();
+      el('transcript').style.display = 'block';
+      el('transcript').textContent = '🎤 ' + t;
+      if(t.indexOf('inspector note') >= 0) {
+        var note = t.split('inspector note').pop().trim();
+        if(note.length > 2) processVoice(note);
+      }
+      if(t.indexOf('code reference') >= 0) {
+        var q = t.split('code reference').pop().trim();
+        if(q.length > 2) { openModal('codeModal'); el('codeQ').value = q; searchCodes(q); }
+      }
+    };
+    recognition.onerror = function() { stopVoice(); };
+  }
+
+  el('voiceRing').addEventListener('click', function() { voiceOn ? stopVoice() : startVoice(); });
+
+  function startVoice() {
+    if(!recognition) { alert('Voice requires HTTPS hosting. Use tap mode for now.'); return; }
+    voiceOn = true;
+    try { recognition.start(); } catch(e) {}
+    el('voiceRing').classList.add('on');
+    el('voiceRing').textContent = '🔴';
+    el('waveform').style.display = 'flex';
+    el('vstatus').textContent = 'LISTENING — "INSPECTOR NOTE..."';
+  }
+
+  function stopVoice() {
+    voiceOn = false;
+    if(recognition) try { recognition.stop(); } catch(e) {}
+    el('voiceRing').classList.remove('on');
+    el('voiceRing').textContent = '🎤';
+    el('waveform').style.display = 'none';
+    el('vstatus').textContent = 'SAY "INSPECTOR NOTE" TO CAPTURE';
+  }
+
+  function processVoice(text) {
+    var e = {id: Date.now(), text: text, type: 'comply', category: '', code: '', note: text};
+    if(/violation|blocked|missing|expired|inoperable|impaired|not |failed|overdue|red tag/i.test(text)) e.type = 'violation';
+    else if(/permit|unpaid|renewal/i.test(text)) e.type = 'permit';
+    if(/extinguisher|abc/i.test(text)) { e.category = 'Fire Extinguisher'; e.code = 'IFC 906.3 / LSB §13-25'; }
+    else if(/hood|kitchen/i.test(text)) { e.category = 'Hood System'; e.code = 'IFC 904.12 / LSB §13-27'; }
+    else if(/sprinkler/i.test(text)) { e.category = 'Sprinkler System'; e.code = 'IFC 903'; }
+    else if(/fire alarm|alarm/i.test(text)) { e.category = 'Fire Alarm'; e.code = 'IFC 907 / LSB 2.4.1.1'; }
+    else if(/egress|exit door/i.test(text)) { e.category = 'Egress / Exit Doors'; e.code = 'IFC 1010.1.9'; }
+    else if(/exit sign/i.test(text)) { e.category = 'Exit Signs'; e.code = 'IFC 1013'; }
+    else if(/emergency light/i.test(text)) { e.category = 'Emergency Lighting'; e.code = 'IFC 1008'; }
+    else if(/storage|clearance/i.test(text)) { e.category = 'Storage Height'; e.code = 'IFC 315.3.1'; }
+    else if(/occupant/i.test(text)) { e.category = 'Occupant Load'; e.code = 'IFC 1004.3'; }
+    else if(/electrical|panel/i.test(text)) { e.category = 'Electrical Panel'; e.code = 'IFC 605.3'; }
+    else { e.category = 'Field Note'; e.code = 'See notes'; }
+    entries.push(e);
+    renderEntries();
+    el('transcript').textContent = '✅ Logged: ' + e.category;
+    setTimeout(function() { if(voiceOn) el('transcript').textContent = ''; }, 2000);
+  }
+
+  // ── TAP BUTTONS ──
+  el('tapAddBtn').addEventListener('click', function() { openModal('entryModal'); });
+
+  // ── PHOTO QUEUE — AI vision analysis on capture ──
+  el('photoBtn').addEventListener('click', function() { el('camInput').click(); });
+  el('camInput').addEventListener('change', function() {
+    var file = this.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var photoData = e.target.result;
+      var base64 = photoData.split(',')[1];
+
+      // Show analyzing toast
+      var t = el('toast');
+      t.textContent = '🔍 Analyzing photo...';
+      t.style.borderColor = 'var(--blue)';
+      t.style.color = 'var(--blue)';
+      t.classList.add('show');
+
+      // Determine media type
+      var mediaType = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg';
+
+      // Call via Netlify function (API key stored securely server-side)
+      fetch('/.netlify/functions/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData: base64, mediaType: mediaType })
+      })
+      .then(function(res) {
+        if(!res.ok) {
+          return res.text().then(function(errText) {
+            throw new Error('API error ' + res.status + ': ' + errText);
+          });
+        }
+        return res.json();
+      })
+      .then(function(data) {
+        var text = (data.content && data.content[0] && data.content[0].text) || '{}';
+        var result;
+        try {
+          text = text.replace(/```json|```/g, '').trim();
+          result = JSON.parse(text);
+        } catch(parseErr) {
+          result = {category: 'Other', code: 'See notes', type: 'comply', notes: 'AI response: ' + text.substring(0, 80), confidence: 'low'};
+        }
+        photoQueue.push({
+          id: Date.now() + Math.random(),
+          data: photoData,
+          tagged: false,
+          type: result.type || 'comply',
+          category: result.category || 'Other',
+          code: result.code || '',
+          notes: result.notes || '',
+          confidence: result.confidence || 'low',
+          aiTagged: true
+        });
+        updateQueueBadge();
+        autoSave();
+        t.classList.remove('show');
+        setTimeout(function() {
+          var conf = result.confidence === 'high' ? '✅' : result.confidence === 'medium' ? '🟡' : '⚠';
+          t.textContent = conf + ' ' + (result.category || 'Photo') + ' — ' + (result.type === 'violation' ? '❌ Violation' : '✅ Comply');
+          t.style.borderColor = result.type === 'violation' ? 'var(--red)' : 'var(--green)';
+          t.style.color = result.type === 'violation' ? 'var(--red-light)' : 'var(--green)';
+          t.classList.add('show');
+          setTimeout(function() { t.classList.remove('show'); t.style.borderColor = ''; t.style.color = ''; }, 3000);
+        }, 100);
+      })
+      .catch(function(err) {
+        console.error('Photo AI error:', err);
+        // Fallback — save to queue without AI tag, show actual error briefly
+        photoQueue.push({
+          id: Date.now() + Math.random(),
+          data: photoData,
+          tagged: false,
+          type: 'comply',
+          category: '',
+          code: '',
+          notes: '',
+          confidence: 'low',
+          aiTagged: false
+        });
+        updateQueueBadge();
+        autoSave();
+        t.classList.remove('show');
+        setTimeout(function() {
+          t.textContent = '📸 Saved — AI unavailable, tag manually';
+          t.style.borderColor = 'var(--gold)';
+          t.style.color = 'var(--gold)';
+          t.classList.add('show');
+          setTimeout(function() { t.classList.remove('show'); t.style.borderColor=''; t.style.color=''; }, 4000);
+        }, 100);
+        // Show error in alert for debugging
+        alert('AI Error: ' + (err.message || 'Unknown error') + '\n\nPhoto saved to queue — tag manually.');
+      });
+    };
+    reader.readAsDataURL(file);
+    this.value = '';
+  });
+
+  function flashAndToast() {
+    var f = el('flashOverlay');
+    f.classList.remove('flash');
+    void f.offsetWidth; // restart animation
+    f.classList.add('flash');
+    var t = el('toast');
+    t.textContent = '📸 Saved to queue · ' + photoQueue.length + ' total';
+    t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, 1600);
+  }
+
+  function updateQueueBadge() {
+    var untagged = photoQueue.filter(function(p) { return !p.tagged; }).length;
+    [el('queueBadge'), el('queueBadge2')].forEach(function(b) {
+      if(!b) return;
+      if(photoQueue.length > 0) { b.style.display = 'flex'; b.textContent = photoQueue.length; }
+      else { b.style.display = 'none'; }
+    });
+  }
+
+  // ── QUEUE REVIEW MODAL ──
+  el('reviewQueueBtn').addEventListener('click', function() {
+    renderQueueGrid();
+    el('queueGridView').style.display = 'block';
+    el('queueTagView').style.display = 'none';
+    openModal('photoModal');
+  });
+
+  function renderQueueGrid() {
+    var untagged = photoQueue.filter(function(p){return !p.tagged;}).length;
+    el('queueSummary').textContent = photoQueue.length + ' photos · ' + untagged + ' need tagging';
+    if(!photoQueue.length) {
+      el('queueGrid').innerHTML = '';
+      el('queueEmptyMsg').style.display = 'block';
+      return;
+    }
+    el('queueEmptyMsg').style.display = 'none';
+    el('queueGrid').innerHTML = photoQueue.map(function(p, i) {
+      var flagIcon = p.tagged ? (p.type === 'comply' ? '✅' : p.type === 'violation' ? '❌' : '💰') : (p.aiTagged ? (p.confidence === 'high' ? '🤖' : '🟡') : '?');
+      var flagClass = p.tagged ? p.type : '';
+      return '<div class="queue-thumb ' + (p.tagged ? 'tagged' : '') + '" data-idx="' + i + '"><img src="' + p.data + '"><div class="queue-thumb-flag ' + flagClass + '">' + flagIcon + '</div><div class="queue-thumb-num">' + (i+1) + '</div></div>';
+    }).join('');
+    el('queueGrid').querySelectorAll('.queue-thumb').forEach(function(thumb) {
+      thumb.addEventListener('click', function() {
+        queueViewIndex = parseInt(thumb.getAttribute('data-idx'));
+        openQueueTagView();
+      });
+    });
+  }
+
+  function openQueueTagView() {
+    if(!photoQueue.length) return;
+    el('queueGridView').style.display = 'none';
+    el('queueTagView').style.display = 'block';
+    loadQueueItem();
+  }
+
+  function loadQueueItem() {
+    var item = photoQueue[queueViewIndex];
+    if(!item) return;
+    el('photoPreview').src = item.data;
+    el('qPos').textContent = (queueViewIndex + 1) + ' / ' + photoQueue.length;
+
+    // Show AI confidence banner
+    var existing = el('aiConfidenceBanner');
+    if(existing) existing.remove();
+    if(item.aiTagged) {
+      var banner = document.createElement('div');
+      banner.id = 'aiConfidenceBanner';
+      var confColor = item.confidence === 'high' ? 'var(--green)' : item.confidence === 'medium' ? 'var(--gold)' : 'var(--red-light)';
+      var confIcon = item.confidence === 'high' ? '🤖 AI — High confidence' : item.confidence === 'medium' ? '🟡 AI — Review suggested' : '⚠ AI — Low confidence, please verify';
+      banner.style.cssText = 'background:rgba(59,158,255,0.1);border:1px solid rgba(59,158,255,0.3);border-radius:6px;padding:8px 12px;font-family:JetBrains Mono,monospace;font-size:10px;color:' + confColor + ';margin-bottom:10px;line-height:1.5';
+      banner.textContent = confIcon + (item.notes ? '\n' + item.notes : '');
+      el('photoPreview').insertAdjacentElement('afterend', banner);
+    }
+
+    // Pre-fill from AI or saved values
+    var catSelect = el('pCat');
+    var options = Array.from(catSelect.options).map(function(o) { return o.value; });
+    if(item.category && options.indexOf(item.category) >= 0) catSelect.value = item.category;
+    else catSelect.value = options[0];
+
+    var codeSelect = el('pCode');
+    var codeOptions = Array.from(codeSelect.options).map(function(o) { return o.value; });
+    if(item.code && codeOptions.indexOf(item.code) >= 0) codeSelect.value = item.code;
+
+    el('pNotes').value = item.notes || '';
+    document.querySelectorAll('[data-ptype]').forEach(function(b) { b.className = 'type-btn'; });
+    var activeType = item.type || 'comply';
+    document.querySelectorAll('[data-ptype]').forEach(function(b) {
+      if(b.getAttribute('data-ptype') === activeType) b.classList.add(activeType);
+    });
+    currentPhotoType = activeType;
+  }
+
+  document.querySelectorAll('[data-ptype]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      currentPhotoType = btn.getAttribute('data-ptype');
+      document.querySelectorAll('[data-ptype]').forEach(function(b) { b.className = 'type-btn'; });
+      btn.classList.add(currentPhotoType);
+    });
+  });
+
+  el('qPrevBtn').addEventListener('click', function() {
+    queueViewIndex = (queueViewIndex - 1 + photoQueue.length) % photoQueue.length;
+    loadQueueItem();
+  });
+  el('qNextBtn').addEventListener('click', function() {
+    queueViewIndex = (queueViewIndex + 1) % photoQueue.length;
+    loadQueueItem();
+  });
+  el('backToGridBtn').addEventListener('click', function() {
+    el('queueTagView').style.display = 'none';
+    el('queueGridView').style.display = 'block';
+    renderQueueGrid();
+  });
+
+  el('savePhotoBtn').addEventListener('click', function() {
+    var item = photoQueue[queueViewIndex];
+    if(!item) return;
+    var cat = el('pCat').value;
+    var code = el('pCode').value;
+    var notes = el('pNotes').value;
+    item.tagged = true;
+    item.type = currentPhotoType;
+    item.category = cat;
+    item.code = code;
+    item.notes = notes;
+    // Push into entries
+    entries.push({
+      id: Date.now() + Math.random(),
+      category: cat,
+      code: code,
+      type: currentPhotoType,
+      note: (notes || '') + ' 📸',
+      text: cat,
+      hasPhoto: true,
+      photoData: item.data
+    });
+    renderEntries();
+    updateQueueBadge();
+    autoSave();
+    // Move to next untagged, or back to grid if done
+    var nextUntagged = -1;
+    for(var i = 1; i <= photoQueue.length; i++) {
+      var idx = (queueViewIndex + i) % photoQueue.length;
+      if(!photoQueue[idx].tagged) { nextUntagged = idx; break; }
+    }
+    if(nextUntagged >= 0) {
+      queueViewIndex = nextUntagged;
+      loadQueueItem();
+    } else {
+      el('queueTagView').style.display = 'none';
+      el('queueGridView').style.display = 'block';
+      renderQueueGrid();
+    }
+  });
+
+  el('deletePhotoBtn').addEventListener('click', function() {
+    if(!confirm('Delete this photo?')) return;
+    photoQueue.splice(queueViewIndex, 1);
+    updateQueueBadge();
+    autoSave();
+    if(!photoQueue.length) {
+      el('queueTagView').style.display = 'none';
+      el('queueGridView').style.display = 'block';
+      renderQueueGrid();
+      return;
+    }
+    queueViewIndex = Math.min(queueViewIndex, photoQueue.length - 1);
+    loadQueueItem();
+    renderQueueGrid();
+  });
+
+  el('queueDoneBtn').addEventListener('click', function() { closeModal('photoModal'); });
+
+  el('codeRefBtn').addEventListener('click', function() { openModal('codeModal'); });
+
+  // ── CHECKLIST ──
+  el('listBtn').addEventListener('click', function() {
+    var d = el('checklistDiv');
+    if(d.style.display === 'none' || !d.style.display) { loadCL('A'); show('checklistDiv'); }
+    else { hide('checklistDiv'); }
+  });
+
+  document.querySelectorAll('#clTypeWrap .occ-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('#clTypeWrap .occ-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      loadCL(btn.getAttribute('data-cl'));
+    });
+  });
+
+  function loadCL(type) {
+    var sections = CL[type] || [];
+    el('clContent').innerHTML = sections.map(function(s, si) {
+      return '<div class="cl-section"><div class="cl-head">' + s.s + '</div>' + s.items.map(function(item, ii) {
+        var id = 'cl_' + si + '_' + ii;
+        return '<div class="cl-item" id="' + id + '" data-label="' + item.l.replace(/"/g, '') + '" data-code="' + item.c + '"><div class="cl-box"></div><div class="cl-text">' + item.l + '<span class="cl-code">' + item.c + '</span></div></div>';
+      }).join('') + '</div>';
+    }).join('');
+    el('clContent').querySelectorAll('.cl-item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        var label = item.getAttribute('data-label');
+        var code = item.getAttribute('data-code');
+        if(!item.classList.contains('comply') && !item.classList.contains('violation')) {
+          item.classList.add('comply'); addFromCL(label, code, 'comply');
+        } else if(item.classList.contains('comply')) {
+          item.classList.remove('comply'); item.classList.add('violation'); addFromCL(label, code, 'violation');
+        } else {
+          item.classList.remove('violation');
+          entries = entries.filter(function(e) { return e.category !== label; });
+          renderEntries();
+        }
+      });
+    });
+  }
+
+  function addFromCL(label, code, type) {
+    var i = entries.findIndex(function(e) { return e.category === label; });
+    var entry = {id: Date.now(), category: label, code: code, type: type, note: '', text: label};
+    if(i >= 0) entries[i] = entry; else entries.push(entry);
+    renderEntries();
+  }
+
+  // ── RED TAG ──
+  el('tagBtn').addEventListener('click', function() {
+    var d = el('rtCard');
+    d.style.display = (d.style.display === 'none' || !d.style.display) ? 'block' : 'none';
+  });
+  el('rtInop').addEventListener('click', function() {
+    el('rtInop').classList.add('inop'); el('rtImp').classList.remove('imp');
+    var d = el('rtDetail'); d.style.display = 'block';
+    d.innerHTML = '<div style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--red-light);margin-bottom:8px">72 HOUR RESPONSE — FIRE WATCH REQUIRED</div><div class="btn" id="openFWBtn" style="background:rgba(200,16,46,0.2);border:1px solid var(--red);border-radius:8px;padding:10px;color:var(--red-light);font-family:Barlow Condensed,sans-serif;font-size:14px;font-weight:800;cursor:pointer;text-align:center">🚨 OPEN FIRE WATCH WORKFLOW</div>';
+    el('openFWBtn').addEventListener('click', function() { openModal('fwModal'); });
+  });
+  el('rtImp').addEventListener('click', function() {
+    el('rtImp').classList.add('imp'); el('rtInop').classList.remove('inop');
+    var d = el('rtDetail'); d.style.display = 'block';
+    d.innerHTML = '<div style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--gold)">10-14 DAY COMPLIANCE WINDOW<br>No fire watch required<br>Business actively resolving</div>';
+  });
+
+  // ── ENTRIES ──
+  function renderEntries() {
+    var vCount = entries.filter(function(e) { return e.type === 'violation'; }).length;
+    el('entCount').textContent = entries.length + ' items · ' + vCount + ' violations';
+    if(!entries.length) {
+      el('entryList').innerHTML = '<div style="padding:16px;text-align:center;font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text-muted)">No entries yet</div>';
+      return;
+    }
+    el('entryList').innerHTML = entries.map(function(e, idx) {
+      return '<div class="entry-row ' + e.type + '"><div style="font-size:18px;flex-shrink:0">' + (e.type === 'comply' ? '✅' : e.type === 'violation' ? '❌' : '💰') + '</div><div class="entry-body"><div class="entry-cat">' + (e.category || e.text || 'Entry') + (e.hasPhoto ? ' 📸' : '') + '</div><div class="entry-code">' + (e.code || '') + (e.tagDate ? ' · Tag: ' + e.tagDate : '') + '</div>' + (e.note ? '<div class="entry-note">' + e.note + '</div>' : '') + '</div><button class="entry-del" data-idx="' + idx + '">🗑</button></div>';
+    }).join('');
+    el('entryList').querySelectorAll('.entry-del').forEach(function(btn) {
+      btn.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        var idx = parseInt(btn.getAttribute('data-idx'));
+        entries.splice(idx, 1);
+        renderEntries();
+      });
+    });
+    if(currentAddr) autoSave();
+  }
+
+  // ── ENTRY MODAL ──
+  document.querySelectorAll('.type-btn[data-etype]').forEach(function(btn) {
+    btn.addEventListener('click', function() { currentEntryType = btn.getAttribute('data-etype'); });
+  });
+
+  el('saveEntryBtn').addEventListener('click', function() {
+    var code = el('eCode').value === 'OTHER' ? el('eCustom').value : el('eCode').value;
+    entries.push({id: Date.now(), category: el('eCat').value, code: code, type: currentEntryType, note: el('eNotes').value, tagDate: el('eTag').value, text: el('eCat').value});
+    renderEntries();
+    closeModal('entryModal');
+    el('eNotes').value = ''; el('eCustom').value = '';
+  });
+
+  // ── CODE SEARCH ──
+  el('codeQ').addEventListener('input', function() { searchCodes(this.value); });
+
+  function searchCodes(q) {
+    if(!q || q.length < 2) { el('codeResults').innerHTML = ''; return; }
+    var ql = q.toLowerCase();
+    var res = CODES.filter(function(c) { return c.topic.toLowerCase().indexOf(ql) >= 0 || c.code.toLowerCase().indexOf(ql) >= 0 || c.detail.toLowerCase().indexOf(ql) >= 0; });
+    el('codeResults').innerHTML = res.length ? res.map(function(c) {
+      return '<div class="code-item"><div style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--gold);margin-bottom:4px">' + c.code + '</div><div style="font-size:14px;font-weight:600;margin-bottom:6px">' + c.topic + '</div><div style="font-size:12px;color:var(--text-dim);line-height:1.5;margin-bottom:6px">' + c.detail + '</div><div style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--red-light)">Timeline: ' + c.timeline + '</div></div>';
+    }).join('') : '<div style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text-dim);padding:10px">No codes found.</div>';
+  }
+
+  // ── REPORT ──
+  function buildReport() {
+    var addr = currentAddr || 'Unknown Address';
+    var rep = el('repName').value || '—';
+    var iNum = el('inspNum').value || '—';
+    var apNum = el('apNum').value || '—';
+    var today = new Date().toLocaleDateString();
+    var days = (currentType.indexOf('TCE') >= 0 || currentType.indexOf('IRC') >= 0) ? 14 : 30;
+    var reinsp = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toLocaleDateString();
+    var viol = entries.filter(function(e) { return e.type === 'violation'; });
+    var comp = entries.filter(function(e) { return e.type === 'comply'; });
+    var perm = entries.filter(function(e) { return e.type === 'permit'; });
+    var r = 'CITY OF HOUSTON\nFire Marshal, Life Safety Bureau\nHouston Fire Department\n500 Jefferson St., Houston, Texas 77002\n832-394-6900\n\n' + '═'.repeat(44) + '\nINSPECTION REPORT\n' + '═'.repeat(44) + '\n\n' + addr + '\n\nReport Date: ' + today + '\nReinspection Date: ' + reinsp + '\nContact: ' + rep + '\nInspection #: ' + iNum + '\nA/P #: ' + apNum + '\n\n' + '─'.repeat(44) + '\nINSPECTOR CONTACT INFORMATION\n' + '─'.repeat(44) + '\nSCOTT BIEHL — Fire Inspector\nCell: (281)380-8586\nEmail: Scott.Biehl@houstontx.gov\n\n' + '─'.repeat(44) + '\nGENERAL COMMENTS\n' + '─'.repeat(44) + '\nInspection Type: ' + currentType + '\n\n' + '─'.repeat(44) + '\nVIOLATION DETAILS\n' + '─'.repeat(44) + '\n';
+    if(!viol.length && !perm.length) r += '\nNo violations found. All observed items in compliance.\n';
+    var n = 1;
+    viol.forEach(function(v) { r += '\n' + n + ') ' + v.category + '\n' + v.code + '\n' + (v.note || 'See inspector comments.') + '\n' + (v.tagDate ? 'Tag Date: ' + v.tagDate + '\n' : '') + '\nCompliance Status: Not in Compliance\nInspector Comments: ' + (v.note || '') + '\n'; n++; });
+    perm.forEach(function(p) { r += '\n' + n + ') PERMIT ISSUE — ' + p.category + '\n' + (p.note || '') + '\n\nCompliance Status: Not in Compliance\n'; n++; });
+    if(comp.length) { r += '\n' + '─'.repeat(44) + '\nOBSERVED IN COMPLIANCE\n' + '─'.repeat(44) + '\n'; comp.forEach(function(c) { r += '\n✅ ' + c.category + ' — ' + c.code + (c.tagDate ? ' | Tag: ' + c.tagDate : '') + '\n' + (c.note || '') + '\n'; }); }
+    r += '\n' + '─'.repeat(44) + '\nINSPECTION TYPE: ' + currentType + '\n' + '─'.repeat(44) + '\n' + (viol.length ? '\nIFC2021.107.1.3.1 — Reinspection fee may apply.\n' : '') + '\nInspector: Scott Biehl _____________ Date: __________\n\nRepresentative: _____________ Date: __________\n';
+    return r;
+  }
+
+  el('reportBtn').addEventListener('click', function() {
+    el('reportContent').textContent = buildReport();
+    openModal('reportModal');
+  });
+
+  el('copyReportBtn').addEventListener('click', function() {
+    navigator.clipboard.writeText(el('reportContent').textContent)
+      .then(function() { alert('Copied!'); })
+      .catch(function() { alert('Select and copy text manually.'); });
+  });
+
+  // FIX: tap-to-email buttons — no auto-trigger
+  el('emailRepBtn').addEventListener('click', function() {
+    var repEmail = el('repEmail').value;
+    if(!repEmail) { alert('No rep email on file. Copy report and send manually.'); return; }
+    var s = encodeURIComponent('HFD Inspection Report — ' + currentAddr + ' — ' + new Date().toLocaleDateString());
+    var b = encodeURIComponent(el('reportContent').textContent);
+    window.open('mailto:' + repEmail + '?cc=Scott.Biehl@houstontx.gov&subject=' + s + '&body=' + b, '_self');
+  });
+
+  el('emailSelfBtn').addEventListener('click', function() {
+    var s = encodeURIComponent('HFD Inspection Report — ' + currentAddr + ' — ' + new Date().toLocaleDateString());
+    var b = encodeURIComponent(el('reportContent').textContent);
+    window.open('mailto:Scott.Biehl@houstontx.gov&subject=' + s + '&body=' + b, '_self');
+  });
+
+  // ── SAVE / SIGNATURE ──
+  el('saveBtn').addEventListener('click', function() {
+    if(!currentAddr) { alert('Load a location first.'); return; }
+    var untagged = photoQueue.filter(function(p) { return !p.tagged; }).length;
+    if(untagged > 0) {
+      if(!confirm('⚠ ' + untagged + ' photo(s) still untagged in your queue.\n\nThey will NOT be in the report unless tagged.\n\nSave anyway?')) {
+        el('reviewQueueBtn').click();
+        return;
+      }
+    }
+    var viol = entries.filter(function(e) { return e.type === 'violation'; });
+    var comp = entries.filter(function(e) { return e.type === 'comply'; });
+    var rep = el('repName').value || '—';
+    el('repNameDisp').textContent = 'Representative: ' + rep;
+    el('sigSummary').textContent = 'INSPECTION FINDINGS\n' + '─'.repeat(32) + '\nLocation: ' + currentAddr + '\nType: ' + currentType + ' · ' + new Date().toLocaleDateString() + '\nRepresentative: ' + rep + '\n' + '─'.repeat(32) + '\nViolations: ' + viol.length + '\n' + viol.map(function(v) { return '  ❌ ' + v.category + ' — ' + v.code; }).join('\n') + (viol.length ? '\n' : '') + 'Compliant: ' + comp.length + '\n' + comp.map(function(c) { return '  ✅ ' + c.category; }).join('\n');
+    openModal('sigModal');
+    setTimeout(function() { initSig('inspCanvas', 'inspSigTime'); initSig('repCanvas', 'repSigTime'); }, 150);
+  });
+
+  // ── SIGNATURES ──
+  function initSig(canvasId, timeId) {
+    var canvas = el(canvasId);
+    if(!canvas) return;
+    canvas.width = canvas.offsetWidth * (window.devicePixelRatio || 1);
+    canvas.height = canvas.offsetHeight * (window.devicePixelRatio || 1);
+    var ctx = canvas.getContext('2d');
+    ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    var drawing = false;
+    function pos(e) {
+      var r = canvas.getBoundingClientRect();
+      if(e.touches) return {x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top};
+      return {x: e.clientX - r.left, y: e.clientY - r.top};
+    }
+    canvas.onmousedown = function(e) { drawing = true; var p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+    canvas.onmousemove = function(e) { if(!drawing) return; var p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+    canvas.onmouseup = function() { drawing = false; el(timeId).textContent = 'Signed: ' + new Date().toLocaleString(); };
+    canvas.ontouchstart = function(e) { e.preventDefault(); drawing = true; var p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+    canvas.ontouchmove = function(e) { e.preventDefault(); if(!drawing) return; var p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+    canvas.ontouchend = function() { drawing = false; el(timeId).textContent = 'Signed: ' + new Date().toLocaleString(); };
+  }
+
+  function sigEmpty(canvasId) {
+    try {
+      var canvas = el(canvasId);
+      if(!canvas || canvas.width === 0 || canvas.height === 0) return true;
+      var ctx = canvas.getContext('2d');
+      var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      for(var i = 3; i < data.length; i += 4) { if(data[i] > 0) return false; }
+      return true;
+    } catch(e) { return true; }
+  }
+
+  document.querySelectorAll('.sig-clear').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var cid = btn.getAttribute('data-sigclear');
+      var tid = btn.getAttribute('data-timeclear');
+      var canvas = el(cid);
+      if(canvas) { var ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height); }
+      el(tid).textContent = '';
+    });
+  });
+
+  el('completeSigBtn').addEventListener('click', function() {
+    var rep = el('repName').value || '—';
+    var repPhone = el('repPhone').value || '—';
+    var repEmail = el('repEmail').value || '';
+    var inspTime = el('inspSigTime').textContent;
+    var repTime = el('repSigTime').textContent;
+    var repSigned = !sigEmpty('repCanvas');
+    if(repEmail && currentAddr) saveContact(currentAddr, rep, repPhone, repEmail);
+
+    var viol = entries.filter(function(e) { return e.type === 'violation'; });
+    var comp = entries.filter(function(e) { return e.type === 'comply'; });
+
+    // Strip base64 photo data before saving to localStorage — keeps record small
+    var entriesForSave = entries.slice().map(function(e) {
+      var copy = Object.assign({}, e);
+      delete copy.photoData;
+      return copy;
+    });
+
+    var insp = {
+      id: Date.now(),
+      addr: currentAddr,
+      type: currentType,
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString(),
+      entries: entriesForSave,
+      rep: rep, repPhone: repPhone, repEmail: repEmail,
+      inspSigned: !sigEmpty('inspCanvas'),
+      repSigned: repSigned,
+      inspSignedTime: inspTime,
+      repSignedTime: repTime
+    };
+
+    // Save inspection record — wrapped to prevent silent crash
+    try {
+      var saved = [];
+      try { saved = JSON.parse(localStorage.getItem('ip_inspections') || '[]'); } catch(e2) {}
+      saved.unshift(insp);
+      localStorage.setItem('ip_inspections', JSON.stringify(saved.slice(0, 200)));
+    } catch(storageErr) {
+      console.warn('Storage full, clearing old records:', storageErr);
+      try { localStorage.setItem('ip_inspections', JSON.stringify([insp])); } catch(e3) {}
+    }
+
+    // Update quota
+    try {
+      var q = {};
+      try { q = JSON.parse(localStorage.getItem('ip_quota') || '{}'); } catch(e2) {}
+      var t = currentType.split('-')[0]; q[t] = (q[t] || 0) + 1;
+      q.log = q.log || []; q.log.unshift({type: t, count: 1, date: new Date().toLocaleDateString()});
+      localStorage.setItem('ip_quota', JSON.stringify(q));
+    } catch(e2) {}
+
+    try { localStorage.removeItem('ip_draft'); } catch(e2) {}
+
+    // Store pending email data BEFORE reset
+    pendingAckText = buildAck(insp, viol, comp, inspTime, repTime, repSigned);
+    pendingRepEmail = repEmail;
+    var savedAddr = currentAddr;
+    var savedType = currentType;
+
+    closeModal('sigModal');
+    resetInspection();
+
+    // Show email modal AFTER reset so it's clearly a new state
+    el('emailSummaryBox').innerHTML =
+      '<div style="color:var(--green);font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:900;letter-spacing:2px;margin-bottom:10px">✅ INSPECTION SAVED</div>' +
+      '<div style="font-size:14px;font-weight:600;margin-bottom:6px">' + savedAddr + '</div>' +
+      '<div style="font-family:\'JetBrains Mono\',monospace;font-size:10px;color:var(--text-dim)">' + savedType + ' · ' + new Date().toLocaleDateString() + '</div>' +
+      '<div style="margin-top:10px;display:flex;gap:12px">' +
+      '<div style="color:var(--red-light);font-family:\'JetBrains Mono\',monospace;font-size:11px">❌ ' + viol.length + ' violations</div>' +
+      '<div style="color:var(--green);font-family:\'JetBrains Mono\',monospace;font-size:11px">✅ ' + comp.length + ' compliant</div>' +
+      '</div>' +
+      '<div style="font-family:\'JetBrains Mono\',monospace;font-size:10px;color:var(--text-dim);margin-top:6px">Rep: ' + rep + (repSigned ? ' ✅ Signed' : ' — No signature') + '</div>';
+
+    setTimeout(function() { openModal('emailModal'); }, 100);
+  });
+
+  el('sendRepEmailBtn').addEventListener('click', function() {
+    if(!pendingRepEmail) { alert('No rep email on file. Use Send to Myself.'); return; }
+    var s = encodeURIComponent('HFD Field Inspection Acknowledgment — ' + new Date().toLocaleDateString());
+    var b = encodeURIComponent(pendingAckText);
+    window.location.href = 'mailto:' + pendingRepEmail + '?cc=Scott.Biehl@houstontx.gov&subject=' + s + '&body=' + b;
+  });
+
+  el('sendSelfEmailBtn').addEventListener('click', function() {
+    var s = encodeURIComponent('HFD Field Inspection Acknowledgment — ' + new Date().toLocaleDateString());
+    var b = encodeURIComponent(pendingAckText);
+    window.location.href = 'mailto:Scott.Biehl@houstontx.gov?subject=' + s + '&body=' + b;
+  });
+
+  el('skipEmailBtn').addEventListener('click', function() {
+    closeModal('emailModal');
+  });
+
+  el('skipSigBtn').addEventListener('click', function() {
+    if(!confirm('Skip signature? Will be flagged as rep not available.')) return;
+    var insp = {
+      id: Date.now(), addr: currentAddr, type: currentType,
+      date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(),
+      entries: entries.slice(), rep: el('repName').value || '—', noRep: true
+    };
+    var saved = []; try { saved = JSON.parse(localStorage.getItem('ip_inspections') || '[]'); } catch(e2) {}
+    saved.unshift(insp);
+    localStorage.setItem('ip_inspections', JSON.stringify(saved.slice(0, 200)));
+    var q = {}; try { q = JSON.parse(localStorage.getItem('ip_quota') || '{}'); } catch(e2) {}
+    var t = currentType.split('-')[0]; q[t] = (q[t] || 0) + 1;
+    q.log = q.log || []; q.log.unshift({type: t, count: 1, date: new Date().toLocaleDateString()});
+    localStorage.setItem('ip_quota', JSON.stringify(q));
+    localStorage.removeItem('ip_draft');
+    closeModal('sigModal');
+    alert('✅ Saved — flagged: Rep not available.');
+    resetInspection();
+  });
+
+  function buildAck(insp, viol, comp, inspTime, repTime, repSigned) {
+    return 'CITY OF HOUSTON\nHouston Fire Department\nFire Marshal, Life Safety Bureau\n500 Jefferson St., Houston, Texas 77002\n832-394-6900\n\n' + '═'.repeat(44) + '\nFIELD INSPECTION ACKNOWLEDGMENT\n' + '═'.repeat(44) + '\n\nLocation: ' + insp.addr + '\nDate: ' + insp.date + '\nTime: ' + insp.time + '\nInspection Type: ' + insp.type + '\n\n' + '─'.repeat(44) + '\nINSPECTOR\n' + '─'.repeat(44) + '\nScott Biehl — Fire Inspector — HFD GO1\nCell: (281)380-8586\nEmail: Scott.Biehl@houstontx.gov\nSigned: ' + (inspTime || '—') + '\n\n' + '─'.repeat(44) + '\nFINDINGS SUMMARY\n' + '─'.repeat(44) + '\nViolations Found: ' + viol.length + '\n' + viol.map(function(v) { return '  ❌ ' + v.category + ' — ' + v.code; }).join('\n') + '\nItems In Compliance: ' + comp.length + '\n' + comp.map(function(c) { return '  ✅ ' + c.category + ' — ' + c.code; }).join('\n') + '\n\n' + '─'.repeat(44) + '\nREPRESENTATIVE ACKNOWLEDGMENT\n' + '─'.repeat(44) + '\nName: ' + insp.rep + '\nPhone: ' + (insp.repPhone || '—') + '\nSigned: ' + (repSigned ? repTime || '—' : 'Not signed on site') + '\n\n' + '─'.repeat(44) + '\nIMPORTANT DISCLAIMER\n' + '─'.repeat(44) + '\nThis field acknowledgment is NOT the official\nNotice of Violation. The official NOV will be\ndelivered via the Houston Fire Department\nINFOR system. This document acknowledges:\n  • Representative presence during inspection\n  • Receipt of verbal findings\n  • Understanding that official NOV follows\n  • Violations require correction by reinspection date\n\nIFC2021.107.1.3.1 — Reinspection fee may apply.\n' + '─'.repeat(44);
+  }
+
+  function resetInspection() {
+    entries = []; currentAddr = ''; photoQueue = [];
+    updateQueueBadge();
+    if(el('addrInput')) el('addrInput').value = '';
+    el('screenTitle').textContent = 'NEW INSPECTION';
+    ['typeCard','priorDiv','voiceCard','tceCard','entriesDiv','checklistDiv','rtCard'].forEach(function(id) { hide(id); });
+    renderEntries();
+  }
+
+  // ── FIRE WATCH ──
+  el('fwApproveBtn').addEventListener('click', function() { alert('HFD Standby approved. Document in INFOR.'); closeModal('fwModal'); });
+  el('fwDenyBtn').addEventListener('click', function() { show('fwDeniedContent'); });
+  el('genFWBtn').addEventListener('click', function() {
+    var doc = 'FIRE WATCH DOCUMENT\n' + '─'.repeat(40) + '\nDate: ' + new Date().toLocaleDateString() + '\nInspector: Scott Biehl — HFD GO1\nCell: (281)380-8586\n' + '─'.repeat(40) + '\nAddress: ' + currentAddr + '\nSystem Inoperable: ' + (el('fwSys').value || '[System]') + '\nSystems Active: ' + (el('fwActive').value || '[Other systems]') + '\nCommand Decision: DENIED\n' + '─'.repeat(40) + '\nSELF-INITIATED FIRE WATCH REQUIRED\n\n• Email shift schedule to:\n  Scott.Biehl@houstontx.gov\n• Include name + contact # per shift\n• 24-hour coverage required\n• 72-HOUR DEADLINE\n• Failure to comply = citation\n' + '─'.repeat(40) + '\nLiability transferred to business owner.\n\nInspector: Scott Biehl _____________\nDate: ' + new Date().toLocaleDateString() + '\n\nBusiness Rep: _____________\nDate: _______________';
+    navigator.clipboard.writeText(doc).then(function() { alert('Fire watch document copied!'); closeModal('fwModal'); }).catch(function() { alert(doc); });
+  });
+
+  // ── MODAL CLOSE ──
+  document.querySelectorAll('.mclose').forEach(function(btn) {
+    btn.addEventListener('click', function() { closeModal(btn.getAttribute('data-close')); });
+  });
+
+  // ── PAST INSPECTIONS ──
+  var histDetailInsp = null;
+
+  el('historyBtn').addEventListener('click', function() {
+    renderHistList('');
+    openModal('historyModal');
+  });
+
+  el('histSearch').addEventListener('input', function() {
+    renderHistList(this.value);
+  });
+
+  function renderHistList(query) {
+    var saved = [];
+    try { saved = JSON.parse(localStorage.getItem('ip_inspections') || '[]'); } catch(e2) {}
+    if(query) {
+      var ql = query.toLowerCase();
+      saved = saved.filter(function(s) { return (s.addr || '').toLowerCase().indexOf(ql) >= 0; });
+    }
+    if(!saved.length) {
+      el('histList').innerHTML = '<div style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--text-muted);padding:20px;text-align:center">' + (query ? 'No matches.' : 'No inspections saved yet.') + '</div>';
+      return;
+    }
+    el('histList').innerHTML = saved.slice(0, 50).map(function(s, i) {
+      var vCount = (s.entries || []).filter(function(e2) { return e2.type === 'violation'; }).length;
+      var cCount = (s.entries || []).filter(function(e2) { return e2.type === 'comply'; }).length;
+      return '<div class="hist-card" data-hidx="' + i + '">' +
+        '<div class="hist-addr">' + (s.addr || 'Unknown') + '</div>' +
+        '<div class="hist-meta">' + (s.type || '') + ' · ' + (s.date || '') + ' ' + (s.time || '') + (s.noRep ? ' · No rep' : '') + '</div>' +
+        '<div class="hist-pills">' +
+        (vCount ? '<div class="hist-pill v">❌ ' + vCount + ' violations</div>' : '') +
+        (cCount ? '<div class="hist-pill c">✅ ' + cCount + ' compliant</div>' : '') +
+        '<div class="hist-pill t">' + (s.type || '—') + '</div>' +
+        '</div></div>';
+    }).join('');
+    el('histList').querySelectorAll('.hist-card').forEach(function(card) {
+      card.addEventListener('click', function() {
+        var idx = parseInt(card.getAttribute('data-hidx'));
+        var saved2 = [];
+        try { saved2 = JSON.parse(localStorage.getItem('ip_inspections') || '[]'); } catch(e2) {}
+        var q2 = el('histSearch').value;
+        var filtered = q2 ? saved2.filter(function(s) { return (s.addr||'').toLowerCase().indexOf(q2.toLowerCase()) >= 0; }) : saved2;
+        histDetailInsp = filtered[idx];
+        if(!histDetailInsp) return;
+        openHistDetail(histDetailInsp);
+      });
+    });
+  }
+
+  function openHistDetail(insp) {
+    el('histDetailTitle').textContent = (insp.addr || 'Inspection').split(' ').slice(0,4).join(' ').toUpperCase();
+    var viol = (insp.entries || []).filter(function(e2) { return e2.type === 'violation'; });
+    var comp = (insp.entries || []).filter(function(e2) { return e2.type === 'comply'; });
+    var r = insp.addr + '\n' + insp.type + ' · ' + insp.date + ' ' + (insp.time || '') +
+      '\nRep: ' + (insp.rep || '—') + (insp.noRep ? ' (NOT AVAILABLE)' : '') +
+      '\n\n' + '─'.repeat(36) + '\nVIOLATIONS (' + viol.length + ')\n' + '─'.repeat(36) + '\n';
+    viol.forEach(function(v, i) { r += '\n' + (i+1) + ') ' + v.category + '\n   ' + (v.code || '') + '\n   ' + (v.note || '') + '\n'; });
+    if(!viol.length) r += '\nNone\n';
+    r += '\n' + '─'.repeat(36) + '\nCOMPLIANT (' + comp.length + ')\n' + '─'.repeat(36) + '\n';
+    comp.forEach(function(c) { r += '\n✅ ' + c.category + ' — ' + (c.code || '') + '\n'; });
+    if(!comp.length) r += '\nNone recorded\n';
+    el('histDetailContent').textContent = r;
+    openModal('histDetailModal');
+  }
+
+  el('histCopyBtn').addEventListener('click', function() {
+    navigator.clipboard.writeText(el('histDetailContent').textContent)
+      .then(function() { alert('Copied!'); })
+      .catch(function() { alert('Select text manually to copy.'); });
+  });
+
+  el('histEmailBtn').addEventListener('click', function() {
+    if(!histDetailInsp) return;
+    var s = encodeURIComponent('HFD Inspection — ' + (histDetailInsp.addr || '') + ' — ' + (histDetailInsp.date || ''));
+    var b = encodeURIComponent(el('histDetailContent').textContent);
+    window.location.href = 'mailto:Scott.Biehl@houstontx.gov?subject=' + s + '&body=' + b;
+  });
+
+  // ── INIT ──
+  loadCL('A');
+
+})();
+</script>
+</body>
+</html>
