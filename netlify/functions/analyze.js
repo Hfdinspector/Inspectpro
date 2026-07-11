@@ -4,6 +4,10 @@ exports.handler = async function(event) {
   }
   try {
     var body = JSON.parse(event.body);
+    var occContext = body.occContext || '';
+    
+    var prompt = 'You are a Houston Fire Department inspector assistant (IFC 2021 + Houston amendments + LSB standards). Analyze this photo taken during a fire inspection.' + occContext + ' Respond ONLY with a JSON object, no markdown, no explanation:\n{"category":"one of: Fire Extinguisher, Hood System, Fire Alarm, Sprinkler System, Egress / Exit Doors, Exit Signs, Emergency Lighting, Electrical Panel, Storage Height, Occupant Load, Permit Status, Flammable Storage, Spray Booth, Hazmat Storage, Building ID / Address, Common Areas, Other","code":"most relevant IFC 2021 or LSB code section","type":"comply or violation","notes":"one sentence describing what you see and why it complies or violates","confidence":"high, medium, or low"}';
+
     var response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -21,10 +25,7 @@ exports.handler = async function(event) {
               type: 'image',
               source: { type: 'base64', media_type: body.mediaType || 'image/jpeg', data: body.imageData }
             },
-            {
-              type: 'text',
-              text: 'You are a Houston Fire Department inspector assistant. Analyze this photo taken during a fire inspection. Respond ONLY with a JSON object, no markdown, no explanation:\n{"category":"one of: Fire Extinguisher, Hood System, Fire Alarm, Sprinkler System, Egress / Exit Doors, Exit Signs, Emergency Lighting, Electrical Panel, Storage Height, Occupant Load, Permit Status, Building ID / Address, Common Areas, Other","code":"most relevant IFC/LSB code","type":"comply or violation","notes":"one sentence observation","confidence":"high, medium, or low"}'
-            }
+            { type: 'text', text: prompt }
           ]
         }]
       })
