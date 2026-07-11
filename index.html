@@ -166,6 +166,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
 @keyframes flashpulse{0%{opacity:0.85}100%{opacity:0}}
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface2);border:1px solid var(--green);color:var(--green);font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;padding:10px 18px;border-radius:30px;z-index:1500;opacity:0;transition:all 0.25s;pointer-events:none;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.occ-tile{background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:10px;cursor:pointer;text-align:center;}
+.occ-tile.active{border-color:var(--red);background:rgba(200,16,46,0.15);}
+.occ-tile-icon{font-size:22px;margin-bottom:4px;}
+.occ-tile-label{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;letter-spacing:1px;color:var(--text);}
+.occ-tile-desc{font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text-dim);margin-top:2px;line-height:1.3;}
+.occ-tile.active .occ-tile-label{color:var(--red-light);}
 .qnav{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
 .qnav-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--text-dim);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
 .qnav-pos{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);}
@@ -216,6 +222,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
         <div class="btn" id="voiceAddrBtn">🎤 VOICE</div>
         <div class="btn red" id="loadBtn">LOAD ▶</div>
       </div>
+    </div>
+
+    <div class="card" id="occCard" style="display:none">
+      <div class="lbl">OCCUPANCY TYPE</div>
+      <div id="occGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px"></div>
+      <div id="occSelected" style="display:none;background:rgba(200,16,46,0.1);border:1px solid var(--red-dark);border-radius:6px;padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--red-light)"></div>
     </div>
 
     <div class="card" id="typeCard" style="display:none">
@@ -286,11 +298,13 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
 
     <div id="checklistDiv" style="display:none">
       <div class="occ-wrap" id="clTypeWrap">
-        <div class="occ-btn active" data-cl="A">ASSEMBLY</div>
-        <div class="occ-btn" data-cl="B">BUSINESS</div>
-        <div class="occ-btn" data-cl="M">MERCANTILE</div>
-        <div class="occ-btn" data-cl="S">STRUCTURE</div>
-        <div class="occ-btn" data-cl="H">HAZMAT</div>
+        <div class="occ-btn active" data-cl="A">🍽 ASSEMBLY</div>
+        <div class="occ-btn" data-cl="B">💼 BUSINESS</div>
+        <div class="occ-btn" data-cl="M">🛒 MERCANTILE</div>
+        <div class="occ-btn" data-cl="S1">🔧 REPAIR</div>
+        <div class="occ-btn" data-cl="S2">📦 STORAGE</div>
+        <div class="occ-btn" data-cl="H">☣️ HAZMAT</div>
+        <div class="occ-btn" data-cl="Mixed">🏬 STRIP/MALL</div>
       </div>
       <div id="clContent"></div>
     </div>
@@ -552,6 +566,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
   'use strict';
 
   var APP_PIN = '1234';
+  
   var pinBuffer = '';
   var currentAddr = '';
   var currentType = 'IRGO';
@@ -604,11 +619,25 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
     {code:'IFC 505.1', topic:'Address Identification', detail:'Building numbers must be visible from street. Minimum 4 inches, contrasting color, maintained.', timeline:'30 days'}
   ];
 
+  // ── OCCUPANCY TYPES ──
+  var OCCUPANCIES = [
+    {code:'A', label:'Assembly', icon:'🍽', desc:'Restaurant, bar, event space', sub:'P2 permit · Crowd mgmt 250+'},
+    {code:'B', label:'Business', icon:'💼', desc:'Office, salon, services', sub:'Standard egress · Extinguisher'},
+    {code:'M', label:'Mercantile', icon:'🛒', desc:'Grocery, retail, Lowe\'s', sub:'High-pile · Aerosol · Hood'},
+    {code:'S1', label:'Storage / Repair', icon:'🔧', desc:'Auto body, repair shop', sub:'Flammable · Spray booth · Vent'},
+    {code:'S2', label:'Low-Haz Storage', icon:'📦', desc:'Warehouse, self-storage', sub:'Sprinkler · Aisle width'},
+    {code:'H', label:'Hazmat', icon:'☣️', desc:'Pool supply, chemicals', sub:'Oxidizers · Quantity limits'},
+    {code:'Mixed', label:'Strip / Mall', icon:'🏬', desc:'Multiple suites, mixed use', sub:'Structure + each suite'},
+    {code:'Other', label:'Other', icon:'🏢', desc:'Not listed above', sub:'General inspection'}
+  ];
+
+  var currentOccupancy = null;
+
   var CL = {
     A: [
       {s:'Egress', items:[{l:'Exit doors — operable, correct swing',c:'IFC 1010.1.9'},{l:'Exit signs — illuminated',c:'IFC 1013'},{l:'Emergency lighting — functional',c:'IFC 1008'},{l:'Aisles clear — min 44"',c:'IFC 1018.2'},{l:'Occupant load posted',c:'IFC 1004.3'}]},
       {s:'Fire Protection', items:[{l:'Sprinkler system — operational',c:'IFC 903'},{l:'Fire alarm — no faults',c:'IFC 907 / LSB 2.4.1.1'},{l:'Hood system — tag current (6mo)',c:'IFC 904.12 / LSB §13-27'},{l:'Fire extinguisher — tagged, mounted',c:'IFC 906.3 / LSB §13-25'},{l:'Pull stations accessible',c:'IFC 907.4.2'}]},
-      {s:'Permits & Occupancy', items:[{l:'Assembly permit (P2) posted',c:'IFC 105.1'},{l:'Fire alarm permit current',c:'IFC 105.1'},{l:'Occupancy not exceeded',c:'IFC 1004'},{l:'Crowd management (250+ occupants)',c:'IFC 403.12.3'}]},
+      {s:'Permits & Occupancy', items:[{l:'Assembly permit (P2) posted',c:'IFC 105.1'},{l:'Fire alarm permit current',c:'IFC 105.1'},{l:'Occupancy not exceeded',c:'IFC 1004'},{l:'Crowd management plan (250+ occupants)',c:'IFC 403.12.3'}]},
       {s:'Housekeeping', items:[{l:'18" sprinkler clearance maintained',c:'IFC 315.3.1'},{l:'No combustible accumulation',c:'IFC 315'},{l:'Electrical panel clear — 36"',c:'IFC 605.3'}]}
     ],
     B: [
@@ -617,15 +646,32 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
       {s:'Housekeeping', items:[{l:'18" sprinkler clearance',c:'IFC 315.3.1'},{l:'Electrical panel accessible',c:'IFC 605.3'},{l:'No combustibles in mechanical rooms',c:'IFC 315'}]}
     ],
     M: [
-      {s:'Egress', items:[{l:'Exit doors operational',c:'IFC 1010'},{l:'Exit signs — sales floor and stockroom',c:'IFC 1013'},{l:'Emergency lighting functional',c:'IFC 1008'},{l:'Occupant load posted',c:'IFC 1004.3'}]},
+      {s:'Egress', items:[{l:'Exit doors operational',c:'IFC 1010'},{l:'Exit signs — sales floor and stockroom',c:'IFC 1013'},{l:'Emergency lighting functional',c:'IFC 1008'},{l:'Occupant load posted',c:'IFC 1004.3'},{l:'Aisle width compliant — 44"',c:'IFC 1018.2'}]},
       {s:'Fire Protection', items:[{l:'Sprinkler — includes stockroom',c:'IFC 903'},{l:'Fire extinguisher — tagged',c:'IFC 906.3 / LSB §13-25'},{l:'Hood system current (if applicable)',c:'IFC 904.12'},{l:'Fire alarm functional (if required)',c:'IFC 907'}]},
-      {s:'Storage', items:[{l:'18" sprinkler clearance',c:'IFC 315.3.1'},{l:'Aerosol storage compliant',c:'IFC 5101'},{l:'Flammable liquids proper storage',c:'LSB §13-30'}]}
+      {s:'Storage & Hazmat', items:[{l:'18" sprinkler clearance — entire store',c:'IFC 315.3.1'},{l:'Aerosol storage compliant — Level 2/3 separated',c:'IFC 5101'},{l:'Flammable liquids proper storage',c:'LSB §13-30'},{l:'High-pile storage permit (if >12ft)',c:'IFC 3206'},{l:'Flue spaces maintained in racking',c:'IFC 3208'}]}
     ],
-    S: [
-      {s:'Structure / Common Areas', items:[{l:'Building address visible from street',c:'IFC 505.1'},{l:'Common area egress clear',c:'IFC 1020'},{l:'Exit signs in corridors',c:'IFC 1013'},{l:'Emergency lighting — common areas',c:'IFC 1008'},{l:'Main sprinkler riser operational',c:'IFC 903'},{l:'Fire alarm main panel — no faults',c:'IFC 907 / LSB 2.4.1.1'},{l:'FDC accessible and capped',c:'IFC 912'},{l:'Standpipe connections accessible',c:'IFC 905'},{l:'Elevator recall functional',c:'IFC 3007'},{l:'Parking/exterior egress clear',c:'IFC 503'},{l:'Mechanical rooms — no combustibles',c:'IFC 315'}]}
+    S1: [
+      {s:'Egress', items:[{l:'Exit doors operable',c:'IFC 1010'},{l:'Exit signs illuminated',c:'IFC 1013'},{l:'Emergency lighting functional',c:'IFC 1008'},{l:'Paths to exits clear',c:'IFC 1003'}]},
+      {s:'Fire Protection', items:[{l:'Sprinkler system operational',c:'IFC 903'},{l:'Fire extinguisher — Class ABC + Class B for flammables',c:'IFC 906.3 / LSB §13-25'},{l:'Fire alarm functional (if required)',c:'IFC 907'},{l:'Hood system — spray booth (if applicable)',c:'IFC 904.12'}]},
+      {s:'Flammable / Hazmat', items:[{l:'Flammable liquids in approved containers',c:'LSB §13-30'},{l:'Flammable storage cabinet — self-closing',c:'IFC 5704.3.2'},{l:'Quantity limits not exceeded',c:'IFC 5704'},{l:'No smoking signs posted',c:'IFC 5704.3.3'},{l:'Ventilation operational — spray booth',c:'IFC 1504.3'},{l:'Spray booth — metal construction, listed',c:'IFC 1504'},{l:'Waste rags in covered metal containers',c:'IFC 315.4'}]},
+      {s:'Housekeeping', items:[{l:'18" sprinkler clearance',c:'IFC 315.3.1'},{l:'Electrical panel accessible — 36"',c:'IFC 605.3'},{l:'No combustible accumulation',c:'IFC 315'}]}
+    ],
+    S2: [
+      {s:'Egress', items:[{l:'Exit doors operable',c:'IFC 1010'},{l:'Exit signs illuminated',c:'IFC 1013'},{l:'Emergency lighting functional',c:'IFC 1008'},{l:'Aisle width compliant — 44"',c:'IFC 1018.2'}]},
+      {s:'Fire Protection', items:[{l:'Sprinkler system — operational',c:'IFC 903'},{l:'Fire extinguisher — tagged, mounted',c:'IFC 906.3 / LSB §13-25'},{l:'Fire alarm functional (if required)',c:'IFC 907'}]},
+      {s:'Storage', items:[{l:'18" sprinkler clearance — all areas',c:'IFC 315.3.1'},{l:'Flue spaces maintained in racking',c:'IFC 3208'},{l:'High-pile permit current (if >12ft)',c:'IFC 3206'},{l:'No combustibles blocking egress',c:'IFC 315'}]}
     ],
     H: [
-      {s:'Hazmat', items:[{l:'Chemical storage within limits',c:'IFC 5001'},{l:'Secondary containment in place',c:'IFC 5004'},{l:'Ventilation operational',c:'IFC 5004.3'},{l:'Flammable liquids compliant',c:'LSB §13-30'},{l:'Hazmat permit current',c:'IFC 105.6'},{l:'Emergency contact posted',c:'IFC 5003.4'}]}
+      {s:'Egress', items:[{l:'Exit doors operable',c:'IFC 1010'},{l:'Exit signs illuminated',c:'IFC 1013'},{l:'Emergency lighting functional',c:'IFC 1008'}]},
+      {s:'Hazmat Storage', items:[{l:'Chemical quantities within limits',c:'IFC 5001'},{l:'Oxidizers segregated from flammables',c:'IFC 5504'},{l:'Corrosives in compatible containers',c:'IFC 5604'},{l:'Secondary containment in place',c:'IFC 5004'},{l:'Flammable liquids — approved storage',c:'LSB §13-30'},{l:'Pool chemicals — quantity limits',c:'IFC 5504.1'},{l:'Incompatible materials separated',c:'IFC 5003.9'}]},
+      {s:'Safety Systems', items:[{l:'Ventilation operational — mechanical',c:'IFC 5004.3'},{l:'Sprinkler system operational',c:'IFC 903'},{l:'Fire extinguisher — correct class for hazard',c:'IFC 906.3 / LSB §13-25'},{l:'Emergency contact posted',c:'IFC 5003.4'},{l:'Hazmat permit current',c:'IFC 105.6'},{l:'SDS sheets accessible',c:'IFC 5003.4'},{l:'No smoking signs posted',c:'IFC 5003.7'}]}
+    ],
+    Mixed: [
+      {s:'Structure / Common Areas', items:[{l:'Building address visible from street',c:'IFC 505.1'},{l:'Common area egress clear',c:'IFC 1020'},{l:'Exit signs in corridors',c:'IFC 1013'},{l:'Emergency lighting — common areas',c:'IFC 1008'},{l:'Main sprinkler riser operational',c:'IFC 903'},{l:'Fire alarm main panel — no faults',c:'IFC 907 / LSB 2.4.1.1'},{l:'FDC accessible and capped',c:'IFC 912'},{l:'Standpipe connections accessible',c:'IFC 905'},{l:'Parking/exterior egress clear',c:'IFC 503'},{l:'Mechanical rooms — no combustibles',c:'IFC 315'}]},
+      {s:'Each Suite', items:[{l:'Exit door operable from inside',c:'IFC 1010.1.9'},{l:'Exit sign illuminated',c:'IFC 1013'},{l:'Fire extinguisher — tagged, mounted',c:'IFC 906.3 / LSB §13-25'},{l:'18" sprinkler clearance',c:'IFC 315.3.1'},{l:'Electrical panel accessible',c:'IFC 605.3'},{l:'Permit posted (if required)',c:'IFC 105.1'}]}
+    ],
+    Other: [
+      {s:'General', items:[{l:'Exit doors operable',c:'IFC 1010'},{l:'Exit signs illuminated',c:'IFC 1013'},{l:'Emergency lighting functional',c:'IFC 1008'},{l:'Fire extinguisher — tagged, mounted',c:'IFC 906.3 / LSB §13-25'},{l:'Sprinkler operational (if present)',c:'IFC 903'},{l:'Fire alarm functional (if present)',c:'IFC 907'},{l:'18" sprinkler clearance',c:'IFC 315.3.1'},{l:'Electrical panel accessible',c:'IFC 605.3'}]}
     ]
   };
 
@@ -754,8 +800,35 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
       existing.history.unshift({name: existing.name, phone: existing.phone, email: existing.email, until: new Date().toLocaleDateString()});
       setTimeout(function() { alert('⚠ Contact updated for ' + addr + '\nOld: ' + existing.email + '\nNew: ' + email); }, 500);
     }
-    contacts[key] = {addr: addr, name: name, phone: phone, email: email, updated: new Date().toLocaleDateString(), history: (existing && existing.history) || []};
+    contacts[key] = {addr: addr, name: name, phone: phone, email: email, occupancy: currentOccupancy || null, updated: new Date().toLocaleDateString(), history: (existing && existing.history) || []};
     saveContacts(contacts);
+  }
+
+  // ── OCCUPANCY SELECTOR ──
+  function renderOccGrid() {
+    el('occGrid').innerHTML = OCCUPANCIES.map(function(o) {
+      return '<div class="occ-tile" data-occ="' + o.code + '">' +
+        '<div class="occ-tile-icon">' + o.icon + '</div>' +
+        '<div class="occ-tile-label">' + o.label + '</div>' +
+        '<div class="occ-tile-desc">' + o.desc + '</div>' +
+        '</div>';
+    }).join('');
+    el('occGrid').querySelectorAll('.occ-tile').forEach(function(tile) {
+      tile.addEventListener('click', function() {
+        el('occGrid').querySelectorAll('.occ-tile').forEach(function(t) { t.classList.remove('active'); });
+        tile.classList.add('active');
+        currentOccupancy = tile.getAttribute('data-occ');
+        var occ = OCCUPANCIES.find(function(o) { return o.code === currentOccupancy; });
+        el('occSelected').style.display = 'block';
+        el('occSelected').textContent = '✅ ' + occ.icon + ' ' + occ.label + ' — ' + occ.sub;
+        // Auto-load matching checklist
+        var clKey = currentOccupancy;
+        if(CL[clKey]) {
+          loadCL(clKey);
+          show('checklistDiv');
+        }
+      });
+    });
   }
 
   // ── LOAD LOCATION ──
@@ -764,6 +837,8 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
     if(!addr) { alert('Enter an address first.'); return; }
     currentAddr = addr;
     el('screenTitle').textContent = addr.split(' ').slice(0,3).join(' ').toUpperCase();
+    show('occCard');
+    renderOccGrid();
     show('typeCard'); show('voiceCard'); show('entriesDiv');
     loadPrior(addr);
     var contact = lookupContact(addr);
@@ -777,6 +852,17 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
       el('contactNote').innerHTML = '';
       el('contactNote').appendChild(note);
       setTimeout(function() { note.remove(); }, 4000);
+    }
+    // Restore saved occupancy for this address
+    var contacts = getContacts();
+    var key = addr.toLowerCase().split(' ').slice(0,4).join(' ');
+    var existing = Object.keys(contacts).find(function(k) { return k.indexOf(key.split(' ')[0]) >= 0; });
+    if(existing && contacts[existing].occupancy) {
+      currentOccupancy = contacts[existing].occupancy;
+      setTimeout(function() {
+        var tile = el('occGrid').querySelector('[data-occ="' + currentOccupancy + '"]');
+        if(tile) tile.click();
+      }, 100);
     }
   });
 
@@ -950,11 +1036,18 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
       // Determine media type
       var mediaType = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg';
 
-      // Call via Netlify function (API key stored securely server-side)
+      // Build occupancy context for AI
+      var occContext = '';
+      if(currentOccupancy) {
+        var occObj = OCCUPANCIES.find(function(o) { return o.code === currentOccupancy; });
+        if(occObj) occContext = ' This is a ' + occObj.label + ' occupancy (' + occObj.desc + '). Focus on: ' + occObj.sub + '.';
+      }
+
+      // Call via Netlify function proxy with occupancy context
       fetch('/.netlify/functions/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageData: base64, mediaType: mediaType })
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({imageData: base64, mediaType: mediaType, occContext: occContext})
       })
       .then(function(res) {
         if(!res.ok) {
@@ -1551,11 +1644,11 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Barlow
   }
 
   function resetInspection() {
-    entries = []; currentAddr = ''; photoQueue = [];
+    entries = []; currentAddr = ''; photoQueue = []; currentOccupancy = null;
     updateQueueBadge();
     if(el('addrInput')) el('addrInput').value = '';
     el('screenTitle').textContent = 'NEW INSPECTION';
-    ['typeCard','priorDiv','voiceCard','tceCard','entriesDiv','checklistDiv','rtCard'].forEach(function(id) { hide(id); });
+    ['occCard','typeCard','priorDiv','voiceCard','tceCard','entriesDiv','checklistDiv','rtCard'].forEach(function(id) { hide(id); });
     renderEntries();
   }
 
